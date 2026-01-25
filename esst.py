@@ -1,4 +1,4 @@
-### Elite Stellar Survey Tools v0.0.1
+### Elite Stellar Survey Tools v0.0.2
 
 from pathlib import Path
 from typing import Iterator
@@ -20,7 +20,10 @@ for path in log_paths:
 
 ##print(latest_log_path)
 
-programs: list[Program] = [CoreProgram(), BoxelSurvey(), DensityColumnSurvey()]
+programs: list[Program] = []
+programs.append(CoreProgram())
+programs.append(BoxelSurvey(programs[0]))
+programs.append(DensityColumnSurvey())
 
 if not latest_log_path:
      exit("No valid log file found!")
