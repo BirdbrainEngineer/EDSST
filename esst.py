@@ -5,7 +5,7 @@ from typing import Iterator
 from watchfiles import watch
 import json
 
-from src.program import SurveyProgram
+from src.program import BoxelSurvey, CoreProgram, DensityColumnSurvey, Program
 
 
 LOG_DIRECTORY = Path("/home/***REMOVED***/.local/share/Steam/steamapps/compatdata/359320/pfx/drive_c/users/steamuser/Saved Games/Frontier Developments/Elite Dangerous/")
@@ -20,10 +20,12 @@ for path in log_paths:
 
 ##print(latest_log_path)
 
-program = SurveyProgram()
+programs: list[Program] = [CoreProgram(), BoxelSurvey(), DensityColumnSurvey()]
+
+if not latest_log_path:
+     exit("No valid log file found!")
 
 print("Elite Stellar Survey Tools successfully booted.")
-
 
 with open(latest_log_path) as file:
     ##parse through the logfile
@@ -31,7 +33,9 @@ with open(latest_log_path) as file:
             if not line: 
                 continue
             event = json.loads(line)
-            program.process_initial_event(event)
+            for program in programs:
+                 program.process_initial_event(event)
+            
     
     ##start listening to the logfile
     for changes in watch(latest_log_path):
@@ -39,6 +43,7 @@ with open(latest_log_path) as file:
             if not line: 
                 continue
             event = json.loads(line)
-            print(event["event"])
-            program.process_event(event)
+            for program in programs:
+                if program.active:
+                    program.process_event(event)
                 

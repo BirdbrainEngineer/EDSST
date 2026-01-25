@@ -1,14 +1,10 @@
-from enum import Enum, auto
+from abc import ABC
 from typing import Any
 from pathlib import Path
-from cli_color_py import bright_blue, bright_cyan, bright_green, yellow
+from cli_color_py import bright_blue, bright_cyan, bright_green, yellow # pyright: ignore[reportMissingTypeStubs]
     ##black, red, green, yellow, blue, magenta, cyan, white, bright_red, bright_green, bright_yellow, bright_blue, bright_magenta, bright_cyan
 from src.util import text_to_clipboard
-
-class SurveyMode(Enum):
-    Boxel = auto()
-    DensityColumn = auto()
-    Idle = auto()
+import json
 
 SYSTEM_LIST_FILE = Path("data/systemlist")
 BOXEL_LOG_FILE = Path("data/boxel_log")
@@ -23,10 +19,25 @@ def reserialize_file(path: Path, contents: list[str]) -> None:
 def load_next_system(system_list: list[str]) -> str:
     return system_list.pop(0)
 
-class SurveyProgram():
-    survey_mode: SurveyMode = SurveyMode.Idle
-    commander_greeted = False
 
+class Program(ABC):
+    active: bool
+
+    def __init__(self):
+        ...
+    def save_state(self):
+        ...
+    def load_state(self):
+        ...
+    def process_initial_event(self, event: Any):
+        ...
+    def process_event(self, event: Any) -> None:
+        ...
+
+class CoreProgram(Program):
+    STATE_PATH: Path = Path("state/CoreProgram")
+    active = True
+    commander_greeted = False
     current_system: str = ""
     terraformables: list[str] = []
     biologicals: list[tuple[str, int]] = []
@@ -34,18 +45,20 @@ class SurveyProgram():
     total_bio_signatures: int = 0
     total_geo_signatures: int = 0
 
-    system_list: list[str]
-    next_system: str
+    # TODO: add save and load state
 
-    def __init__(self):
-        self.system_list = read_system_list()
-        self.next_system = load_next_system(self.system_list)
-        if self.next_system:
-            text_to_clipboard(self.next_system)
-            print("Detected ongoing Boxel suvey\nNext Boxel survey system: " + self.next_system)
-            self.survey_mode = SurveyMode.Boxel
+    def __init__(self) -> None:
+        pass
 
-    def process_initial_event(self, event: Any):
+    def save_state(self) -> None:
+        pass
+
+    def load_state(self):
+        if self.STATE_PATH.exists():
+            state = json.load(self.STATE_PATH.open())
+            self.active = state["active"]
+
+    def process_initial_event(self, event: Any) -> None:
         match event["event"]:
             case "Commander":
                 if not self.commander_greeted:
@@ -96,32 +109,79 @@ class SurveyProgram():
                 self.geologicals = []
                 self.total_bio_signatures = 0
                 self.total_geo_signatures = 0
-                if self.survey_mode == SurveyMode.Idle and not self.next_system:
-                    system_list = read_system_list()
-                    next_system = load_next_system(system_list)
-                    if next_system:
-                        self.survey_mode = SurveyMode.Boxel
-                        text_to_clipboard(next_system)
-                        print("Detected new Boxel Survey!\nNext Boxel survey system: ", next_system)
-
             case "FSDJump":
                 print("Jumped to system:", event["StarSystem"])
-                match self.survey_mode:
-                    case SurveyMode.Boxel:
-                        if self.next_system.lower() == event["StarSystem"].lower():
-                            reserialize_file(SYSTEM_LIST_FILE, self.system_list)
-                            open(BOXEL_LOG_FILE, "a").write(self.next_system + "\n")
-                            if not self.system_list:
-                                self.survey_mode = SurveyMode.Idle
-                                print("Boxel Survey Completed!")
-                                return
-                            self.next_system = load_next_system(self.system_list)
-                            text_to_clipboard(self.next_system)
-                            print("Next Boxel Survey System: ", self.next_system)
-
-                    case SurveyMode.DensityColumn:
-                        coordinates_and_system = f'{event["StarPos"][0]}\t{event["StarPos"][1]}\t{event["StarPos"][2]}\t{event["StarSystem"]}'
-                        text_to_clipboard(coordinates_and_system)
-                    case SurveyMode.Idle:
-                        pass
             case _: pass
+
+class BoxelSurvey(Program):
+    STATE_PATH: Path = Path("state/BoxelSurvey.json")
+    active = False
+    system_list: list[str]
+    next_system: str
+
+    def __init__(self) -> None:
+        self.load_state()
+        self.save_state()
+        if self.active:
+            self.system_list = read_system_list()
+            self.next_system = load_next_system(self.system_list)
+            if self.next_system:
+                text_to_clipboard(self.next_system)
+                print("Ongoing Boxel survey\nNext Boxel survey system: " + self.next_system)
+            else:
+                print("No systems in systemlist for scanning!\nPlease populate systemlist file and try again.")
+                self.active = False
+                self.save_state()
+
+    def save_state(self) -> None:
+        state = {"active":self.active}
+        json.dump(state, self.STATE_PATH.open("w"))
+
+    def load_state(self) -> None:
+        if self.STATE_PATH.exists():
+            state = json.load(self.STATE_PATH.open())
+            self.active = state["active"]
+    
+    def process_event(self, event: Any) -> None:
+        match event["event"]:
+            case "FSDJump":
+                if self.next_system.lower() == event["StarSystem"].lower() and self.active:
+                    reserialize_file(SYSTEM_LIST_FILE, self.system_list)
+                    open(BOXEL_LOG_FILE, "a").write(self.next_system + "\n")
+                    if not self.system_list:
+                        print("Boxel Survey Completed!")
+                        self.active = False
+                        self.save_state()
+                        return
+                    self.next_system = load_next_system(self.system_list)
+                    text_to_clipboard(self.next_system)
+                    print("Next Boxel Survey System: ", self.next_system)
+            case _: pass
+
+class DensityColumnSurvey(Program):
+    STATE_PATH: Path = Path("state/DensityColumnSurvey.json")
+    active = False
+
+    def __init__(self) -> None:
+        self.load_state()
+        self.save_state()
+    
+    def save_state(self) -> None:
+        state = {"active":self.active}
+        json.dump(state, self.STATE_PATH.open("w"))
+    
+    def load_state(self) -> None:
+        if self.STATE_PATH.exists():
+            state = json.load(self.STATE_PATH.open())
+            self.active = state["active"]
+
+    def process_event(self, event: Any) -> None:
+        match event["event"]:
+            case "FSDJump":
+                coordinates_and_system = f'{event["StarPos"][0]}\t{event["StarPos"][1]}\t{event["StarPos"][2]}\t{event["StarSystem"]}'
+                text_to_clipboard(coordinates_and_system)
+            case _: pass
+
+class DensityNavRouteSurvey(Program):
+    pass
+
