@@ -13,9 +13,9 @@ class Program():
     active: bool = False
 
     def __init__(self) -> None:
-        print("ESST: Loading module: " + self.SURVEY_NAME)
-        self.survey_dir = Path("surveys") / Path(self.SURVEY_NAME)
-        self.state_file_path = self.survey_dir / Path(self.SURVEY_NAME + "_state")
+        print("ESST: Loading module: " + self.SURVEY_NAME.lower())
+        self.survey_dir = Path("surveys") / Path(self.SURVEY_NAME.lower())
+        self.state_file_path = self.survey_dir / Path(self.SURVEY_NAME.lower() + "_state")
         if not self.survey_dir.exists():
             self.survey_dir.mkdir()
         self.load_state()
@@ -46,6 +46,12 @@ class Program():
     def process_event(self, event: Any) -> None:
         pass
 
+    def process_user_input(self, user_input: str) -> None:
+        if(user_input.lower() == "enable " + self.SURVEY_NAME.lower()):
+            self.enable()
+        elif(user_input.lower() == "disable " + self.SURVEY_NAME.lower()):
+            self.disable()
+
 class CoreProgram(Program):
     SURVEY_NAME = "core"
     active = True
@@ -53,7 +59,7 @@ class CoreProgram(Program):
     current_system: str = ""
     system_coordinates: tuple[float, float, float] = (0.0, 0.0, 0.0)
     system_address: int = 0
-    bodies: dict[int, dict[str, Any]] = defaultdict(dict)
+    bodies: defaultdict[int, dict[str, Any]] = defaultdict(dict)
     clusters:                   set[int] = set()
     stars:                      set[int] = set()
     icy_bodies:                 set[int] = set()
@@ -119,14 +125,14 @@ class CoreProgram(Program):
             }
         json.dump(state, self.state_file_path.open("w"))
 
-    def load_state(self):
+    def load_state(self) -> None:
         if self.state_file_path.exists():
             state = json.load(self.state_file_path.open())
             self.active = True
             self.current_system =               state["current_system"]
             self.system_coordinates =           tuple(state["system_coordinates"])
             self.system_address =               state["system_address"]
-            self.bodies =                       state["bodies"]
+            self.bodies =                       defaultdict(dict, state["bodies"])
             self.stars =                        set(state["stars"])
             self.clusters =                     set(state["clusters"])
             self.icy_bodies =                   set(state["icy_bodies"])
@@ -164,7 +170,7 @@ class CoreProgram(Program):
             case "Shutdown":
                 exit("Elite Stellar Survey Tools spooling down...\nFarewell, Commander!")
             case "Scan":
-                self.bodies[event["BodyID"]][event["event"]] = event
+                self.bodies[int(event["BodyID"])][event["event"]] = event
                 if "Rings" in event:
                     self.ringed.add(event["BodyID"])
                 if "StarType" in event:
@@ -197,7 +203,7 @@ class CoreProgram(Program):
                         self.clusters.add(event["BodyID"])
                 self.save_state()
             case "FSSBodySignals":
-                self.bodies[event["BodyID"]][event["event"]] = event
+                self.bodies[int(event["BodyID"])][event["event"]] = event
                 bodyID = int(event["BodyID"])
                 for signal in event["Signals"]:
                     match signal["Type"]:
@@ -250,7 +256,7 @@ class CoreProgram(Program):
             case _: pass
 
 class FSSReporter(Program):
-    SURVEY_NAME = "fss_reporter"
+    SURVEY_NAME = "FSSReporter"
     core_program: CoreProgram
 
     def __init__(self, core_program: CoreProgram) -> None:
@@ -285,7 +291,7 @@ class FSSReporter(Program):
             case _: pass
 
 class BoxelSurvey(Program):
-    SURVEY_NAME = "boxel_survey"
+    SURVEY_NAME = "BoxelSurvey"
     boxel_log_file_path: Path
     system_list_file_path: Path
     system_list: list[str]
@@ -330,7 +336,7 @@ class BoxelSurvey(Program):
         return self.system_list.pop(0)
 
 class DensityColumnSurvey(Program):
-    SURVEY_NAME = "density_column_survey"
+    SURVEY_NAME = "DensityColumnSurvey"
 
     def __init__(self) -> None:
         super().__init__()
