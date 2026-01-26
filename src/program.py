@@ -96,26 +96,26 @@ class CoreProgram(Program):
                 "system_coordinates":           self.system_coordinates,
                 "system_address":               self.system_address,
                 "bodies":                       self.bodies,
-                "stars":                        self.stars,
-                "clusters":                     self.clusters,
-                "icy_bodies":                   self.icy_bodies,
-                "rocky_icy_bodies":             self.rocky_icy_bodies,
-                "rocky_bodies":                 self.rocky_bodies,
-                "metal_rich_bodies":            self.metal_rich_bodies,
-                "high_metal_content_bodies":    self.high_metal_content_bodies,
-                "earth_like_world_bodies":      self.earth_like_world_bodies,
-                "ammonia_world_bodies":         self.ammonia_world_bodies,
-                "water_world_bodies":           self.water_world_bodies,
-                "gas_giant_bodies":             self.gas_giant_bodies,
-                "landables":                    self.landables,
-                "atmospherics":                 self.atmospherics,
-                "ringed":                       self.ringed,
-                "volcanisms":                   self.volcanisms,
-                "terraformables":               self.terraformables,
-                "biologicals":                  self.biologicals,
-                "geologicals":                  self.geologicals,
-                "guardians":                    self.guardians,
-                "thargoids":                    self.thargoids,
+                "stars":                        list(self.stars),
+                "clusters":                     list(self.clusters),
+                "icy_bodies":                   list(self.icy_bodies),
+                "rocky_icy_bodies":             list(self.rocky_icy_bodies),
+                "rocky_bodies":                 list(self.rocky_bodies),
+                "metal_rich_bodies":            list(self.metal_rich_bodies),
+                "high_metal_content_bodies":    list(self.high_metal_content_bodies),
+                "earth_like_world_bodies":      list(self.earth_like_world_bodies),
+                "ammonia_world_bodies":         list(self.ammonia_world_bodies),
+                "water_world_bodies":           list(self.water_world_bodies),
+                "gas_giant_bodies":             list(self.gas_giant_bodies),
+                "landables":                    list(self.landables),
+                "atmospherics":                 list(self.atmospherics),
+                "ringed":                       list(self.ringed),
+                "volcanisms":                   list(self.volcanisms),
+                "terraformables":               list(self.terraformables),
+                "biologicals":                  list(self.biologicals),
+                "geologicals":                  list(self.geologicals),
+                "guardians":                    list(self.guardians),
+                "thargoids":                    list(self.thargoids),
             }
         json.dump(state, self.state_file_path.open("w"))
 
@@ -127,26 +127,26 @@ class CoreProgram(Program):
             self.system_coordinates =           tuple(state["system_coordinates"])
             self.system_address =               state["system_address"]
             self.bodies =                       state["bodies"]
-            self.stars =                        state["stars"]
-            self.clusters =                     state["clusters"]
-            self.icy_bodies =                   state["icy_bodies"]
-            self.rocky_icy_bodies =             state["rocky_icy_bodies"]
-            self.rocky_bodies =                 state["rocky_bodies"]
-            self.metal_rich_bodies =            state["metal_rich_bodies"]
-            self.high_metal_content_bodies =    state["HMC_bodies"]
-            self.earth_like_world_bodies =      state["ELW_bodies"]
-            self.ammonia_world_bodies =         state["AW_bodies"]
-            self.water_world_bodies =           state["WW_bodies"]
-            self.gas_giant_bodies =             state["Gas_giant_bodies"]
-            self.landables =                    state["landables"]
-            self.atmospherics =                 state["atmospherics"]
-            self.ringed =                       state["ringed"]
-            self.terraformables =               state["terraformables"]
-            self.volcanisms =                   state["volcanisms"]
-            self.biologicals =                  state["biologicals"]
-            self.geologicals =                  state["geologicals"]
-            self.guardians =                    state["guardians"]
-            self.thargoids =                    state["thargoids"]
+            self.stars =                        set(state["stars"])
+            self.clusters =                     set(state["clusters"])
+            self.icy_bodies =                   set(state["icy_bodies"])
+            self.rocky_icy_bodies =             set(state["rocky_icy_bodies"])
+            self.rocky_bodies =                 set(state["rocky_bodies"])
+            self.metal_rich_bodies =            set(state["metal_rich_bodies"])
+            self.high_metal_content_bodies =    set(state["high_metal_content_bodies"])
+            self.earth_like_world_bodies =      set(state["earth_like_world_bodies"])
+            self.ammonia_world_bodies =         set(state["ammonia_world_bodies"])
+            self.water_world_bodies =           set(state["water_world_bodies"])
+            self.gas_giant_bodies =             set(state["gas_giant_bodies"])
+            self.landables =                    set(state["landables"])
+            self.atmospherics =                 set(state["atmospherics"])
+            self.ringed =                       set(state["ringed"])
+            self.terraformables =               set(state["terraformables"])
+            self.volcanisms =                   set(state["volcanisms"])
+            self.biologicals =                  set(state["biologicals"])
+            self.geologicals =                  set(state["geologicals"])
+            self.guardians =                    set(state["guardians"])
+            self.thargoids =                    set(state["thargoids"])
 
     def process_past_event(self, event: Any) -> None:
         match event["event"]:
@@ -333,10 +333,7 @@ class DensityColumnSurvey(Program):
     SURVEY_NAME = "density_column_survey"
 
     def __init__(self) -> None:
-        if not self.survey_dir.exists():
-            self.survey_dir.mkdir()
-        self.load_state()
-        self.save_state()
+        super().__init__()
 
     def process_event(self, event: Any) -> None:
         match event["event"]:
