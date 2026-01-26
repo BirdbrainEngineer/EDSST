@@ -163,20 +163,6 @@ class CoreProgram(Program):
         match event["event"]:
             case "Shutdown":
                 exit("Elite Stellar Survey Tools spooling down...\nFarewell, Commander!")
-            case "FSSBodySignals":
-                bodyID = int(event["BodyID"])
-                for signal in event["Signals"]:
-                    match signal["Type"]:
-                        case "$SAA_SignalType_Biological;":
-                            self.biologicals.add(bodyID)
-                        case "$SAA_SignalType_Geological;":
-                            self.geologicals.add(bodyID)
-                        case "$SAA_SignalType_Guardian;":
-                            self.guardians.add(bodyID)
-                        case "$SAA_SignalType_Thargoid;":
-                            self.thargoids.add(bodyID)
-                        case _: pass
-                    self.save_state()
             case "Scan":
                 self.bodies[event["BodyID"]][event["event"]] = event
                 if "Rings" in event:
@@ -209,6 +195,27 @@ class CoreProgram(Program):
                             case _:                         self.gas_giant_bodies.add(event["BodyID"])
                     else:
                         self.clusters.add(event["BodyID"])
+                self.save_state()
+            case "FSSBodySignals":
+                self.bodies[event["BodyID"]][event["event"]] = event
+                bodyID = int(event["BodyID"])
+                for signal in event["Signals"]:
+                    match signal["Type"]:
+                        case "$SAA_SignalType_Biological;":
+                            self.biologicals.add(bodyID)
+                        case "$SAA_SignalType_Geological;":
+                            self.geologicals.add(bodyID)
+                        case "$SAA_SignalType_Guardian;":
+                            self.guardians.add(bodyID)
+                        case "$SAA_SignalType_Thargoid;":
+                            self.thargoids.add(bodyID)
+                        case _: pass
+                    self.save_state()
+            case "SAAScanComplete":
+                self.bodies[event["BodyID"]][event["event"]] = event
+                self.save_state()
+            case "SAASignalsFound":
+                self.bodies[event["BodyID"]][event["event"]] = event
                 self.save_state()
             case "StartJump":
                 self.bodies.clear()
@@ -250,24 +257,31 @@ class FSSReporter(Program):
         super().__init__()
         self.core_program = core_program
 
-    def process_past_event(self, event: Any):
-        ...
     def process_event(self, event: Any) -> None:
         match event["event"]:
             case "FSSAllBodiesFound":
                 print(bright_cyan("\nFull system scan of " + self.core_program.current_system + " complete!\n"))
-                if self.terraformables:
-                    print(bright_blue("Terraformable planets: " + str(len(self.terraformables))))
-                    for terraformable in self.terraformables:
-                        print(bright_blue("\t" + terraformable))
-                if self.biologicals:
-                    print(bright_green("Biological signatures: " + str(len(self.biologicals)) + " (" + str(self.total_bio_signatures) + ")"))
-                    for biological in self.biologicals:
-                        print(bright_green("\t" + biological[0] + ": " + str(biological[1])))
-                if self.geologicals:
-                    print(yellow("Geological signatures: " + str(len(self.geologicals)) + " (" + str(self.total_geo_signatures) + ")"))
-                    for geological in self.geologicals:
-                        print(yellow("\t" + geological[0] + ": " + str(geological[1])))
+                valuables: list[str] = []
+                for valuable in self.core_program.terraformables | self.core_program.earth_like_world_bodies | self.core_program.ammonia_world_bodies | self.core_program.water_world_bodies:
+                    attributes = str(
+                                " (" + 
+                                        str(self.core_program.bodies[valuable]["Scan"]["PlanetClass"]) + 
+                                        str(" + Terraformable" if valuable in self.core_program.terraformables else "") + 
+                                        ")"
+                                    )
+                    valuables.append(self.core_program.bodies[valuable]["Scan"]["BodyName"] + attributes)
+                if valuables:
+                    print(bright_blue("Valuable planets: " + str(len(valuables))))
+                    for valuable in valuables:
+                        print(bright_blue("\t" + str(valuable)))
+                if self.core_program.biologicals:
+                    print(bright_green("Biological signatures: " + str(len(self.core_program.biologicals)) + " (" + str(len(self.core_program.biologicals)) + ")"))
+                    for biological in self.core_program.biologicals:
+                        print(bright_green("\t" + str(self.core_program.bodies[biological]["FSSBodySignals"]["BodyName"])))
+                if self.core_program.geologicals:
+                    print(yellow("Geological signatures: " + str(len(self.core_program.geologicals)) + " (" + str(len(self.core_program.geologicals)) + ")"))
+                    for geological in self.core_program.geologicals:
+                        print(yellow("\t" + str(self.core_program.bodies[geological]["FSSBodySignals"]["BodyName"])))
             case _: pass
 
 class BoxelSurvey(Program):
