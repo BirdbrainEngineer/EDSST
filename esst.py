@@ -5,7 +5,7 @@ from typing import Iterator
 from watchfiles import watch
 import json
 
-from src.program import BoxelSurvey, CoreProgram, DensityColumnSurvey, Program
+from src.program import CoreProgram, FSSReporter, BoxelSurvey, DensityColumnSurvey, Program
 
 
 LOG_DIRECTORY = Path("/home/***REMOVED***/.local/share/Steam/steamapps/compatdata/359320/pfx/drive_c/users/steamuser/Saved Games/Frontier Developments/Elite Dangerous/")
@@ -20,10 +20,14 @@ for path in log_paths:
 
 ##print(latest_log_path)
 
+core_program = CoreProgram()
 programs: list[Program] = []
-programs.append(CoreProgram())
-programs.append(BoxelSurvey(programs[0]))
+programs.append(core_program)
+programs.append(FSSReporter(core_program))
+programs.append(BoxelSurvey(core_program))
 programs.append(DensityColumnSurvey())
+
+programs[1].enable()
 
 if not latest_log_path:
      exit("No valid log file found!")
@@ -37,7 +41,7 @@ with open(latest_log_path) as file:
                 continue
             event = json.loads(line)
             for program in programs:
-                 program.process_initial_event(event)
+                 program.process_past_event(event)
             
     
     ##start listening to the logfile
