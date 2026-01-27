@@ -1,5 +1,5 @@
-### Elite Stellar Survey Tools v0.0.3
-
+### Elite Stellar Survey Tools
+import src.version
 from pathlib import Path
 from typing import Iterator
 import toml
@@ -10,6 +10,8 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 
 from src.program import CoreProgram, FSSReporter, BoxelSurvey, DW3DensityColumnSurvey, Program
+
+# TODO: Spansh and/or EDSM integration.
 
 config = toml.load("config.toml")
 
@@ -39,11 +41,11 @@ async def listen_for_events():
                 event = json.loads(line)
                 if event["event"] == "Shutdown":
                     latest_journal_file_path = None
-                yield "past", event
+                yield event
     else:
         latest_journal_file_path = None
     
-    print("Done processing past events")
+    print("ESST: All caught up!")
 
     while True:
         if latest_journal_file_path:
@@ -59,7 +61,7 @@ async def listen_for_events():
                         event = json.loads(line)
                         if event["event"] == "Shutdown":
                             break
-                        yield "current", event
+                        yield event
         
         print("ESST: Elite: Dangerous not running. Waiting for new journal log file.")
         # Wait for new log to be created
@@ -73,14 +75,10 @@ async def listen_for_events():
                 print("ESST: Found new journal log file.")
 
 async def event_loop(modules: list[Program]):
-    async for type, event in listen_for_events():        
+    async for event in listen_for_events():        
         for module in modules:
             if module.enabled:
-                match type:
-                    case "past":
-                        module.process_past_event(event)
-                    case "current":
-                        module.process_event(event)
+                module.process_event(event)
 
 async def input_loop(modules: list[Program], event_loop_task: asyncio.Task) -> None: # pyright: ignore[reportUnknownParameterType, reportMissingTypeArgument]
     session = PromptSession() # pyright: ignore[reportUnknownVariableType]
@@ -95,6 +93,8 @@ async def input_loop(modules: list[Program], event_loop_task: asyncio.Task) -> N
 
 async def main():
 
+    print("\nElite Stellar Survey Tools " + src.version.ESST_VERSION + " booting...\n")
+
     #TODO: Make loading of modules dynamic
 
     modules: list[Program] = []
@@ -104,11 +104,14 @@ async def main():
     modules.append(BoxelSurvey(core_module))
     modules.append(DW3DensityColumnSurvey(core_module))
         
-    print("Elite Stellar Survey Tools successfully booted.")
+    
 
     async with asyncio.TaskGroup() as tg:
         event_loop_task = tg.create_task(event_loop(modules))
         input_loop_task = tg.create_task(input_loop(modules, event_loop_task)) # pyright: ignore[reportUnusedVariable]
+        print("╔═════════════════════════════════════════════════╗\n" +
+              "║ Elite Stellar Survey Tools successfully booted! ║\n" +
+              "╚═════════════════════════════════════════════════╝")
 
 asyncio.run(main())
 

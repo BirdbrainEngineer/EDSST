@@ -5,11 +5,32 @@ from src.util import text_to_clipboard, get_distance, reserialize_file, read_fil
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.styles import Style
+import src.version
 import math
 import json
 
+# TODO: rename "program into module"
+# TODO: separate each module into their own file
+
 global_style = Style.from_dict({
-    "error": "#ff0000",
+    "error": "#ff4040",
+    "red": "#ff0000",
+    "orange": "#FF8000",
+    "yellow": "#ffff00",
+    "lime": "#80ff00",
+    "green": "#00ff00",
+    "mint": "#00ff80",
+    "cyan": "#00ffff",
+    "bright-blue": "#0080ff",
+    "blue": "#0000ff",
+    "violet": "#8000ff",
+    "magenta": "#ff00ff",
+    "deep-pink": "#ff0080",
+    "white": "#ffffff",
+    "black": "#000000",
+    "dark-grey": "#404040",
+    "grey": "#808080",
+    "light-grey": "#b0b0b0",
 })
 
 class Program():
@@ -18,49 +39,55 @@ class Program():
     })
 
     SURVEY_NAME: str = "UNNAMED_SURVEY"
+    SURVEY_VERSION: str = "?"
     survey_dir: Path
     state_file_path: Path
     enabled: bool = False
 
     def __init__(self) -> None:
-        self.print("Loading module...", end="")
+        self.style = Style(self.style.style_rules + global_style.style_rules)
+        self.print("Loading module version " + self.SURVEY_VERSION + "...")
         self.survey_dir = Path("surveys") / Path(self.SURVEY_NAME.lower())
         self.state_file_path = self.survey_dir / Path(self.SURVEY_NAME.lower() + "_state")
         if not self.survey_dir.exists():
             self.survey_dir.mkdir()
         try:
             self.load_state()
-            self.print("Enabled" if self.enabled else "Disabled", prefix="")
             self.save_state()
         except Exception as e: # pyright: ignore[reportUnusedVariable]
             print("")
-            self.print("Initializing a new state file... First time running? Or previous state file corrupted!")
-            self.enabled = False
-            self.print("Disabled")
-            self.save_state()
-        self.style = Style(self.style.style_rules + global_style.style_rules)
+            self.print("<yellow>Initializing a new state file...</yellow>")
+            self.print("First time running? New module version? If yes, disregard this warning.")
+            self.print("Otherwise, state file was corrupted. Data loss possible, check ")
+        if self.enabled:
+            self.print("Module currently <green>enabled</green>")
+        else:
+            self.print("Module currently <red>disabled</red>")
 
     def enable(self) -> None:
-        self.enabled = True
-        self.save_state()
-        self.print("enabled!")
+        if self.enabled:
+            self.print("<green>Already enabled!</green>")
+        else:
+            self.enabled = True
+            self.save_state()
+            self.print("<green>Enabled!</green>")
 
     def disable(self) -> None:
-        self.enabled = False
-        self.save_state()
-        self.print("disabled!")
+        if not self.enabled:
+            self.print("<red>Already disabled!</red>")
+        else:
+            self.enabled = False
+            self.save_state()
+            self.print("<red>Disabled!</red>")
 
     def save_state(self) -> None:
-        state: dict[str, Any] = {"active":self.enabled}
+        state: dict[str, Any] = {"enabled":self.enabled, "version":self.SURVEY_VERSION}
         json.dump(state, self.state_file_path.open("w"))
 
     def load_state(self) -> None:
         if self.state_file_path.exists():
             state = json.load(self.state_file_path.open())
-            self.enabled = state["active"]
-
-    def process_past_event(self, event: Any) -> None:
-        pass
+            self.enabled = state["enabled"]
 
     def process_event(self, event: Any) -> None:
         pass
@@ -79,22 +106,26 @@ class Program():
                     self.disable()
                 case _: self.print("<error>Received unknown command - </error>" + arguments[1])
 
-    def print(self, *values: object, sep: str | None = " ", end: str | None = "\n", prefix: str | None = None) -> None:
+    def print(self, *values: str, sep: str | None = " ", end: str | None = "\n", prefix: str | None = None) -> None:
+        html_values = map(HTML, values)
         if prefix is not None:
-            print_formatted_text(prefix, *values, sep=sep, end=end, style=self.style) # pyright: ignore[reportArgumentType]
+            print_formatted_text(prefix, *html_values, sep=sep, end=end, style=self.style) # pyright: ignore[reportArgumentType]
         else:
-            print_formatted_text(HTML(f"<survey_color>{self.SURVEY_NAME}</survey_color>: "), *values, sep=sep, end=end, style=self.style) # pyright: ignore[reportArgumentType]
+            print_formatted_text(HTML(f"<survey_color>{self.SURVEY_NAME}</survey_color>: "), *html_values, sep=sep, end=end, style=self.style) # pyright: ignore[reportArgumentType]
 
 
 class CoreProgram(Program):
     style = Style.from_dict({
-        "survey_color": "#ff7700",
+        "survey_color": "#ff8000",
     })
     SURVEY_NAME = "core"
-    active = True
+    SURVEY_VERSION: str = src.version.ESST_VERSION
+    enabled = True
     commander_greeted = False
+    commander_name: str = ""
     current_system: str = ""
     system_coordinates: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    previous_system_coordinates: tuple[float, float, float] = (0.0, 0.0, 0.0)
     system_address: int = 0
     bodies: defaultdict[int, dict[str, Any]] = defaultdict(dict)
     clusters:                   set[int] = set()
@@ -118,25 +149,20 @@ class CoreProgram(Program):
     guardians:                  set[int] = set()
     thargoids:                  set[int] = set()    
 
-    # TODO: If player scans stuff while the survey or program is not open but starts or restarts the survey or program before finishing the scan, 
-    #       then the results are not necessarily synced  
-    # TODO: Spansh and/or EDSM integration.
-
-    def enable(self) -> None:
-        self.enabled = True
-        self.save_state()
-        self.print("ESST: Core module is always enabled!")
+    def __init__(self) -> None:
+        super().__init__()
 
     def disable(self) -> None:
-        self.enabled = True
-        self.save_state()
-        self.print("ESST: Core module cannot be disabled!")
+        super().disable()
+        self.print("<error>Disabling the core module can have unforseen side-effects!</error>")
+        self.print("<error>Consider re-enabling, unless you really know what you are doing!</error>")
 
     def save_state(self) -> None:
         state: dict[str, Any] = {
-                "active":                       self.enabled,
+                "enabled":                      self.enabled,
                 "current_system":               self.current_system,
                 "system_coordinates":           self.system_coordinates,
+                "previous_system_coordinates":  self.previous_system_coordinates,
                 "system_address":               self.system_address,
                 "bodies":                       self.bodies,
                 "stars":                        list(self.stars),
@@ -165,9 +191,10 @@ class CoreProgram(Program):
     def load_state(self) -> None:
         if self.state_file_path.exists():
             state = json.load(self.state_file_path.open())
-            self.enabled = True
+            self.enabled =                      state["enabled"]
             self.current_system =               state["current_system"]
             self.system_coordinates =           tuple(state["system_coordinates"])
+            self.previous_system_coordinates =  tuple(state["previous_system_coordinates"])
             self.system_address =               state["system_address"]
             self.bodies =                       defaultdict(dict, state["bodies"])
             self.stars =                        set(state["stars"])
@@ -191,19 +218,15 @@ class CoreProgram(Program):
             self.guardians =                    set(state["guardians"])
             self.thargoids =                    set(state["thargoids"])
 
-    def process_past_event(self, event: Any) -> None:
-        match event["event"]:
-            case "Commander":
-                if not self.commander_greeted:
-                    self.print("Welcome, Commander " + event["Name"])
-                    self.commander_greeted = True
-            case _: pass
-
     def process_event(self, event: Any) -> None:
         self.print(event["event"])
         match event["event"]:
-            case "Shutdown":
-                exit("Elite Stellar Survey Tools spooling down...\nFarewell, Commander!")
+            case "Commander":
+                name = str(event["Name"])
+                if not self.commander_greeted or name != self.commander_name:
+                    self.print("Welcome, Commander " + name)
+                    self.commander_name = str(name)
+                    self.commander_greeted = True
             case "Scan":
                 self.bodies[int(event["BodyID"])][event["event"]] = event
                 if "Rings" in event:
@@ -281,12 +304,12 @@ class CoreProgram(Program):
 
                 self.save_state()
             case "FSDJump":
-                previous_coordinates = self.system_coordinates
+                self.previous_system_coordinates = self.system_coordinates
                 self.current_system = event["StarSystem"]
                 self.system_coordinates = (event["StarPos"][0], event["StarPos"][1], event["StarPos"][2])
                 self.system_address = event["SystemAddress"]
                 self.save_state()
-                distance_jumped = get_distance(previous_coordinates, self.system_coordinates)
+                distance_jumped = get_distance(self.previous_system_coordinates, self.system_coordinates)
                 self.print("Jumped " + str(round(distance_jumped, 2)) + "Ly to system: " + self.current_system)
             case _: pass
 
@@ -299,6 +322,7 @@ class FSSReporter(Program):
     })
 
     SURVEY_NAME = "FSSReporter"
+    SURVEY_VERSION: str = "0.0.1"
     core: CoreProgram
 
     def __init__(self, core: CoreProgram) -> None:
@@ -308,7 +332,7 @@ class FSSReporter(Program):
     def process_event(self, event: Any) -> None:
         match event["event"]:
             case "FSSAllBodiesFound":
-                self.print(HTML("<survey_color>\nFull system scan of " + self.core.current_system + " complete!</survey_color>\n"))
+                self.print("<survey_color>\nFull system scan of " + self.core.current_system + " complete!</survey_color>\n")
                 valuables: list[str] = []
                 for valuable in self.core.terraformables | self.core.earth_like_world_bodies | self.core.ammonia_world_bodies | self.core.water_world_bodies:
                     attributes = str(
@@ -319,39 +343,39 @@ class FSSReporter(Program):
                                     )
                     valuables.append(self.core.bodies[valuable]["Scan"]["BodyName"] + attributes)
                 if valuables:
-                    self.print(HTML("<terraformables>Valuable planets: " + 
+                    self.print("<terraformables>Valuable planets: " + 
                                     str(len(valuables)) + 
-                                    "</terraformables>"), 
+                                    "</terraformables>", 
                                     prefix="")
                     for valuable in valuables:
-                        self.print(HTML("<terraformables>\t" + 
+                        self.print("<terraformables>\t" + 
                                    str(valuable) + 
-                                   "</terraformables>"), 
+                                   "</terraformables>", 
                                    prefix="")
                 if self.core.biologicals:
-                    self.print(HTML("<biologicals>Biological signatures: " + 
+                    self.print("<biologicals>Biological signatures: " + 
                                     str(len(self.core.biologicals)) + 
                                     " (" + 
                                     str(len(self.core.biologicals)) + 
-                                    ")</biologicals>"), 
+                                    ")</biologicals>", 
                                     prefix="")
                     for biological in self.core.biologicals:
-                        self.print(HTML("<biologicals>\t" + 
+                        self.print("<biologicals>\t" + 
                                    str(self.core.bodies[biological]["FSSBodySignals"]["BodyName"]) + 
-                                   "</biologicals>"), 
+                                   "</biologicals>", 
                                    prefix="")
                 if self.core.geologicals:
-                    self.print(HTML("<geologicals>Geological signatures: " + 
+                    self.print("<geologicals>Geological signatures: " + 
                                     str(len(self.core.geologicals)) + 
                                     " (" + 
                                     str(len(self.core.geologicals)) + 
-                                    ")</geologicals>"), 
+                                    ")</geologicals>", 
                                     prefix="")
                     for geological in self.core.geologicals:
-                        self.print(HTML("<geologicals>\t" + 
-                                        str(self.core.bodies[geological]["FSSBodySignals"]["BodyName"]) + 
-                                        "</geologicals>"), 
-                                        prefix="")
+                        self.print("<geologicals>\t" + 
+                                    str(self.core.bodies[geological]["FSSBodySignals"]["BodyName"]) + 
+                                    "</geologicals>", 
+                                    prefix="")
             case _: pass
 
 class BoxelSurvey(Program):
@@ -360,6 +384,7 @@ class BoxelSurvey(Program):
     })
 
     SURVEY_NAME = "BoxelSurvey"
+    SURVEY_VERSION: str = "0.0.1"
     boxel_log_file_path: Path
     system_list_file_path: Path
     system_list: list[str]
@@ -371,9 +396,6 @@ class BoxelSurvey(Program):
         self.boxel_log_file_path = self.survey_dir / Path("boxel_log")
         self.system_list_file_path = self.survey_dir / Path("boxel_survey_system_list")
         self.core = core
-
-    def process_past_event(self, event: Any) -> None:
-        pass
     
     def process_event(self, event: Any) -> None:
         match event["event"]:
@@ -382,13 +404,13 @@ class BoxelSurvey(Program):
                     reserialize_file(self.system_list_file_path, self.system_list)
                     open(self.boxel_log_file_path, "a").write(self.next_system + "\n")
                     if not self.system_list:
-                        self.print(HTML(" <survey_color>Survey Completed!</survey_color> "))
+                        self.print(" <survey_color>Survey Completed!</survey_color> ")
                         self.disable()
                         self.save_state()
                         return
                     self.next_system = self.load_next_system()
                     text_to_clipboard(self.next_system)
-                    self.print(HTML("Next system: " + self.next_system))
+                    self.print("Next system: " + self.next_system)
             case _: pass
 
     def load_next_system(self) -> str:
@@ -400,6 +422,7 @@ class DW3DensityColumnSurvey(Program):
     })
 
     SURVEY_NAME = "DW3DensityColumnSurvey"
+    SURVEY_VERSION: str = "0.0.1"
     MAX_HEIGHT_DEVIATION = 10
     survey_file_path: Path = Path("")
     core: CoreProgram
