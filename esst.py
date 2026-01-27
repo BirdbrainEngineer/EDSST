@@ -1,4 +1,5 @@
-### Elite Stellar Survey Tools
+### Elite: Dangerous Stellar Survey Tools
+
 import src.version
 from pathlib import Path
 from typing import Iterator
@@ -44,8 +45,11 @@ async def listen_for_events():
                 yield event
     else:
         latest_journal_file_path = None
-    
-    print("ESST: All caught up!")
+
+    if latest_journal_file_path:
+        print("EDSST: Synchronized to journal file - " + str(latest_journal_file_path.name))
+
+    yield {"event": "CaughtUp"}
 
     while True:
         if latest_journal_file_path:
@@ -63,7 +67,7 @@ async def listen_for_events():
                             break
                         yield event
         
-        print("ESST: Elite: Dangerous not running. Waiting for new journal log file.")
+        print("EDSST: Elite: Dangerous not running. Waiting for new journal log file.")
         # Wait for new log to be created
         async for log_directory_changes in awatch(log_directory):
             del log_directory_changes
@@ -72,10 +76,10 @@ async def listen_for_events():
                 continue
             else:
                 latest_journal_file_path = new_latest_journal_file_path
-                print("ESST: Found new journal log file.")
+                print("EDSST: Found new journal log file.")
 
 async def event_loop(modules: list[Program]):
-    async for event in listen_for_events():        
+    async for event in listen_for_events():
         for module in modules:
             if module.enabled:
                 module.process_event(event)
@@ -85,15 +89,17 @@ async def input_loop(modules: list[Program], event_loop_task: asyncio.Task) -> N
     while True:
         with patch_stdout():
             result = await session.prompt_async(">>> ") # pyright: ignore[reportUnknownVariableType]
-            if str(result) == "exit": # pyright: ignore[reportUnknownArgumentType]
+            if str(result).lower() == "exit": # pyright: ignore[reportUnknownArgumentType]
                 event_loop_task.cancel()
                 return
-        for module in modules:
-            module.process_user_input(str(result).lower().split()) # pyright: ignore[reportUnknownArgumentType]
+        arguments = str(result).lower().split() # pyright: ignore[reportUnknownArgumentType]
+        if len(arguments) > 2:
+            for module in modules:
+                module.process_user_input(arguments) 
 
 async def main():
 
-    print("\nElite Stellar Survey Tools " + src.version.ESST_VERSION + " booting...\n")
+    print("\nElite: Dangerous Stellar Survey Tools " + src.version.ESST_VERSION + " booting...\n")
 
     #TODO: Make loading of modules dynamic
 
@@ -103,16 +109,17 @@ async def main():
     modules.append(FSSReporter(core_module))
     modules.append(BoxelSurvey(core_module))
     modules.append(DW3DensityColumnSurvey(core_module))
-        
+    for module in modules:
+        module.caught_up = False 
     
 
     async with asyncio.TaskGroup() as tg:
         event_loop_task = tg.create_task(event_loop(modules))
         input_loop_task = tg.create_task(input_loop(modules, event_loop_task)) # pyright: ignore[reportUnusedVariable]
-        print("╔═════════════════════════════════════════════════╗\n" +
-              "║ Elite Stellar Survey Tools successfully booted! ║\n" +
-              "╚═════════════════════════════════════════════════╝")
+        print("\n╔════════════════════════════════════════════════════════════╗\n" +
+                "║ Elite: Dangerous Stellar Survey Tools successfully booted! ║\n" +
+                "╚════════════════════════════════════════════════════════════╝\n")
 
 asyncio.run(main())
 
-exit("Elite Stellar Survey Tools spooling down...\nFarewell, Commander!")
+exit("Elite: Dangerous Stellar Survey Tools spooling down...\nFarewell, Commander!")

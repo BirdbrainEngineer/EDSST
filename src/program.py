@@ -5,7 +5,7 @@ from src.util import text_to_clipboard, get_distance, reserialize_file, read_fil
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.styles import Style
-import src.version
+from src.version import MODULE_VERSIONS_PATH
 import math
 import json
 
@@ -14,6 +14,7 @@ import json
 
 global_style = Style.from_dict({
     "error": "#ff4040",
+    "warning": "#ffff80",
     "red": "#ff0000",
     "orange": "#FF8000",
     "yellow": "#ffff00",
@@ -43,22 +44,64 @@ class Program():
     survey_dir: Path
     state_file_path: Path
     enabled: bool = False
+    caught_up: bool = True
 
     def __init__(self) -> None:
+        first_boot = False
+        version_changed = False
+        previous_version: str = "N/A"
         self.style = Style(self.style.style_rules + global_style.style_rules)
         self.print("Loading module version " + self.SURVEY_VERSION + "...")
         self.survey_dir = Path("surveys") / Path(self.SURVEY_NAME.lower())
         self.state_file_path = self.survey_dir / Path(self.SURVEY_NAME.lower() + "_state")
         if not self.survey_dir.exists():
             self.survey_dir.mkdir()
+            first_boot = True
+        
+        try:
+            module_versions = json.load(MODULE_VERSIONS_PATH.open())
+            first_boot = True
+            for module in module_versions:
+                if module["module_name"] == self.SURVEY_NAME:
+                    first_boot = False
+                    if module["version"] != self.SURVEY_VERSION:
+                        module["version"] = self.SURVEY_VERSION
+                        version_changed = True
+                        json.dump(module_versions, MODULE_VERSIONS_PATH.open("w"))
+                        break
+            module_versions.append({"module_name": self.SURVEY_NAME, "version": self.SURVEY_VERSION})
+            try:
+                json.dump(module_versions, MODULE_VERSIONS_PATH.open("w"))
+            except:
+                self.print("<error>Could not add to versions file! EDSST is in a peculiar state... Tread with caution.</error>")
+        except Exception as e: # pyright: ignore[reportUnusedVariable]
+            if MODULE_VERSIONS_PATH.exists():
+                self.print("Could not load version file!")
+            else:
+                self.print("<error>Could not find versions file!</error>")
+                self.print("<warning>Attempting to make one.</warning>")
+                module_versions: list[dict[str, Any]] = [{"module_name": self.SURVEY_NAME, "version": self.SURVEY_VERSION}]
+                first_boot = True
+                try:
+                    json.dump(module_versions, MODULE_VERSIONS_PATH.open("w"))
+                    self.print("<yellow>New versions file successfully created.</yellow>")
+                except:
+                    self.print("<error>Could not make a versions file! EDSST is in a peculiar state... Tread with caution.</error>")
+
+        if first_boot: self.print("<warning>First boot of module detected!</warning>")
+        if version_changed: 
+            self.print("<warning>New module version detected!</warning> ")
+            self.print(previous_version + " -> " + self.SURVEY_VERSION)
+
         try:
             self.load_state()
             self.save_state()
-        except Exception as e: # pyright: ignore[reportUnusedVariable]
-            print("")
-            self.print("<yellow>Initializing a new state file...</yellow>")
-            self.print("First time running? New module version? If yes, disregard this warning.")
-            self.print("Otherwise, state file was corrupted. Data loss possible, check ")
+        except: # pyright: ignore[reportUnusedVariable]
+            if not first_boot or not version_changed:
+                self.print("<error>State file was found to be corrupted or missing! Data loss or corruption is possible!</error>")
+            self.print("<warning>Initializing a new state file...</warning>")
+            self.save_state()
+        self.print("Module successfully loaded!")
         if self.enabled:
             self.print("Module currently <green>enabled</green>")
         else:
@@ -90,28 +133,30 @@ class Program():
             self.enabled = state["enabled"]
 
     def process_event(self, event: Any) -> None:
-        pass
+        if event["event"] == "CaughtUp":
+            self.caught_up = True
 
     def process_user_input(self, arguments: list[str]) -> None:
         if len(arguments) == 0:
             return
-        elif arguments[0] == self.SURVEY_NAME.lower():
+        elif arguments[0].lower() == self.SURVEY_NAME.lower():
             if len(arguments) < 2:
-                self.print("<error>Received no commands!</error>")
+                self.print("<warning>Received no commands!</warning>")
                 return
             match arguments[1]:
                 case "enable":
                     self.enable()
                 case "disable":
                     self.disable()
-                case _: self.print("<error>Received unknown command - </error>" + arguments[1])
+                case _: self.print("<warning>Received unknown command - </warning>" + arguments[1])
 
     def print(self, *values: str, sep: str | None = " ", end: str | None = "\n", prefix: str | None = None) -> None:
+        if not self.caught_up: return
         html_values = map(HTML, values)
         if prefix is not None:
             print_formatted_text(prefix, *html_values, sep=sep, end=end, style=self.style) # pyright: ignore[reportArgumentType]
         else:
-            print_formatted_text(HTML(f"<survey_color>{self.SURVEY_NAME}</survey_color>: "), *html_values, sep=sep, end=end, style=self.style) # pyright: ignore[reportArgumentType]
+            print_formatted_text(HTML(f"<survey_color>{self.SURVEY_NAME}</survey_color>:"), *html_values, sep=sep, end=end, style=self.style) # pyright: ignore[reportArgumentType]
 
 
 class CoreProgram(Program):
@@ -119,8 +164,9 @@ class CoreProgram(Program):
         "survey_color": "#ff8000",
     })
     SURVEY_NAME = "core"
-    SURVEY_VERSION: str = src.version.ESST_VERSION
+    SURVEY_VERSION: str = "0.0.1"
     enabled = True
+    event_hose_enabled: bool = False
     commander_greeted = False
     commander_name: str = ""
     current_system: str = ""
@@ -149,6 +195,8 @@ class CoreProgram(Program):
     guardians:                  set[int] = set()
     thargoids:                  set[int] = set()    
 
+    # TODO: separate out different gas giant types
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -160,6 +208,7 @@ class CoreProgram(Program):
     def save_state(self) -> None:
         state: dict[str, Any] = {
                 "enabled":                      self.enabled,
+                "event_hose_enabled":           self.event_hose_enabled,
                 "current_system":               self.current_system,
                 "system_coordinates":           self.system_coordinates,
                 "previous_system_coordinates":  self.previous_system_coordinates,
@@ -192,6 +241,7 @@ class CoreProgram(Program):
         if self.state_file_path.exists():
             state = json.load(self.state_file_path.open())
             self.enabled =                      state["enabled"]
+            self.event_hose_enabled =           state["event_hose_enabled"]
             self.current_system =               state["current_system"]
             self.system_coordinates =           tuple(state["system_coordinates"])
             self.previous_system_coordinates =  tuple(state["previous_system_coordinates"])
@@ -218,8 +268,26 @@ class CoreProgram(Program):
             self.guardians =                    set(state["guardians"])
             self.thargoids =                    set(state["thargoids"])
 
+    def process_user_input(self, arguments: list[str]) -> None:
+        if arguments[0] in ["core", "main", "base", "edsst"]:
+            match arguments[1]:
+                case "eventstream":
+                    if len(arguments) < 3: pass
+                    match arguments[2]:
+                        case "enable" | "on":
+                            self.event_hose_enabled = True
+                            self.save_state()
+                        case "disable" | "off":
+                            self.event_hose_enabled = False
+                            self.save_state()
+                        case _: pass
+                case _: pass
+        else:
+            super().process_user_input(arguments)
+
     def process_event(self, event: Any) -> None:
-        self.print(event["event"])
+        super().process_event(event)
+        if self.event_hose_enabled: self.print(event["event"])
         match event["event"]:
             case "Commander":
                 name = str(event["Name"])
@@ -330,6 +398,7 @@ class FSSReporter(Program):
         self.core = core
 
     def process_event(self, event: Any) -> None:
+        super().process_event(event)
         match event["event"]:
             case "FSSAllBodiesFound":
                 self.print("<survey_color>\nFull system scan of " + self.core.current_system + " complete!</survey_color>\n")
@@ -398,6 +467,7 @@ class BoxelSurvey(Program):
         self.core = core
     
     def process_event(self, event: Any) -> None:
+        super().process_event(event)
         match event["event"]:
             case "FSDJump":
                 if self.next_system.lower() == event["StarSystem"].lower():
@@ -464,6 +534,7 @@ class DW3DensityColumnSurvey(Program):
             self.survey_ongoing = state["survey_ongoing"]
 
     def process_event(self, event: Any) -> None:
+        super().process_event(event)
         if self.survey_ongoing:
             match event["event"]:
                 case "FSDJump":
