@@ -10,7 +10,7 @@ import asyncio
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 
-from src.program import CoreProgram, FSSReporter, BoxelSurvey, DW3DensityColumnSurvey, Program
+from src.program import CoreProgram, BoxelSurvey, DW3DensityColumnSurvey, Program, FSSReporter
 
 # TODO: Spansh and/or EDSM integration.
 
@@ -81,7 +81,7 @@ async def listen_for_events():
 async def event_loop(modules: list[Program]):
     async for event in listen_for_events():
         for module in modules:
-            if module.enabled:
+            if module.state.enabled:
                 module.process_event(event)
 
 async def input_loop(modules: list[Program], event_loop_task: asyncio.Task) -> None: # pyright: ignore[reportUnknownParameterType, reportMissingTypeArgument]

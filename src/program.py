@@ -1,4 +1,4 @@
-from collections import defaultdict
+from enum import Enum, auto
 from typing import Any
 from pathlib import Path
 from src.util import text_to_clipboard, get_distance, reserialize_file, read_file_by_lines
@@ -6,6 +6,7 @@ from prompt_toolkit import print_formatted_text
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.styles import Style
 from src.version import MODULE_VERSIONS_PATH
+import msgspec
 import math
 import json
 
@@ -34,6 +35,9 @@ global_style = Style.from_dict({
     "light-grey": "#b0b0b0",
 })
 
+class ModuleState(msgspec.Struct):
+    enabled: bool = False
+
 class Program():
     style = Style.from_dict({
         "survey_color": "#ffffff",
@@ -43,8 +47,8 @@ class Program():
     SURVEY_VERSION: str = "?"
     survey_dir: Path
     state_file_path: Path
-    enabled: bool = False
     caught_up: bool = True
+    state: ModuleState = ModuleState()
 
     def __init__(self) -> None:
         first_boot = False
@@ -96,41 +100,41 @@ class Program():
         try:
             self.load_state()
             self.save_state()
-        except: # pyright: ignore[reportUnusedVariable]
+        except Exception as ex: # pyright: ignore[reportUnusedVariable]
+            raise ex
             if not first_boot or not version_changed:
                 self.print("<error>State file was found to be corrupted or missing! Data loss or corruption is possible!</error>")
             self.print("<warning>Initializing a new state file...</warning>")
             self.save_state()
         self.print("Module successfully loaded!")
-        if self.enabled:
+        if self.state.enabled:
             self.print("Module currently <green>enabled</green>")
         else:
             self.print("Module currently <red>disabled</red>")
 
     def enable(self) -> None:
-        if self.enabled:
+        if self.state.enabled:
             self.print("<green>Already enabled!</green>")
         else:
-            self.enabled = True
+            self.state.enabled = True
             self.save_state()
             self.print("<green>Enabled!</green>")
 
     def disable(self) -> None:
-        if not self.enabled:
+        if not self.state.enabled:
             self.print("<red>Already disabled!</red>")
         else:
-            self.enabled = False
+            self.state.enabled = False
             self.save_state()
             self.print("<red>Disabled!</red>")
 
     def save_state(self) -> None:
-        state: dict[str, Any] = {"enabled":self.enabled, "version":self.SURVEY_VERSION}
-        json.dump(state, self.state_file_path.open("w"))
+        state: dict[str, Any] = {"enabled":self.state.enabled}
+        self.state_file_path.write_bytes(msgspec.json.encode(state))
 
     def load_state(self) -> None:
         if self.state_file_path.exists():
-            state = json.load(self.state_file_path.open())
-            self.enabled = state["enabled"]
+            self.state = msgspec.json.decode(self.state_file_path.read_bytes(), type = ModuleState)
 
     def process_event(self, event: Any) -> None:
         if event["event"] == "CaughtUp":
@@ -158,42 +162,93 @@ class Program():
         else:
             print_formatted_text(HTML(f"<survey_color>{self.SURVEY_NAME}</survey_color>:"), *html_values, sep=sep, end=end, style=self.style) # pyright: ignore[reportArgumentType]
 
+class BodyAttribute(Enum):
+    first_discovery = auto()
+    first_possible_map = auto()
+    first_possible_footfall = auto()
+    first_map = auto()
+    first_footfall = auto()
+    automatic_scan = auto()
+    fss_scan = auto()
+    fss_signal = auto()
+    saa_scan = auto()
+    saa_signal = auto()
+    cluster = auto()
+    star = auto()
+    icy_body = auto()
+    rocky_icy_body = auto()
+    rocky_body = auto()
+    metal_rich_body = auto()
+    high_metal_content_body = auto()
+    earth_like_world_body = auto()
+    ammonia_world_body = auto()
+    water_world_body = auto()
+    gas_giant_body = auto()
+    landable = auto()
+    atmospheric = auto()
+    ringed = auto()
+    terraformable = auto()
+    volcanic = auto()
+    bios = auto()
+    geos = auto()
+    guardians = auto()
+    thargoids = auto()
+
+class Bodies(msgspec.Struct):
+    bodies: dict[int, dict[str, Any]] = msgspec.field(default_factory=dict)
+    bodies_by_attribute: dict[BodyAttribute, set[int]] = msgspec.field(default_factory=lambda: {attribute: set() for attribute in BodyAttribute})
+
+    def get_bodies_by_attribute(self, *args: BodyAttribute, sorted: bool = False):
+        query_set: set[int] = set()
+        for attribute in args:
+            query_set = query_set | self.bodies_by_attribute[attribute]
+
+        query_list = list(query_set)
+        if sorted: query_list.sort()
+        result: list[dict[str, Any]] = []
+        for bodyID in query_list:
+            result.append(self.bodies[bodyID])
+        return result
+
+    def get_body_by_id(self, body_id: int) -> dict[str, Any]:
+        if body_id not in self.bodies:
+            self.bodies[body_id] = {}
+        return self.bodies[body_id]
+    
+    def get_bodies_by_id(self, body_ids: list[int]):
+        result: list[dict[str, Any]] = []
+        for id in body_ids:
+            result.append(self.get_body_by_id(id))
+        return result
+    
+    def add_body_signal(self, body_event: dict[str, Any]) -> None:
+        self.get_body_by_id(body_event["BodyID"]).update(body_event)
+
+    def record_attribute(self, attribute: BodyAttribute, bodyID: int) -> None:
+        self.bodies_by_attribute[attribute].add(bodyID)
+class StarSystem(msgspec.Struct):
+    name: str = ""
+    coordinates: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    address: int = 0
+    num_bodies: int = 0
+    num_non_bodies: int = 0
+    bodies: Bodies = msgspec.field(default_factory=lambda: Bodies())
+
+class CoreProgramState(ModuleState):
+    event_stream_enabled: bool = False
+    current_system: StarSystem = msgspec.field(default_factory=StarSystem)
+    previous_system: StarSystem = msgspec.field(default_factory=StarSystem)
 
 class CoreProgram(Program):
     style = Style.from_dict({
         "survey_color": "#ff8000",
     })
+
     SURVEY_NAME = "core"
     SURVEY_VERSION: str = "0.0.1"
-    enabled = True
-    event_hose_enabled: bool = False
     commander_greeted = False
     commander_name: str = ""
-    current_system: str = ""
-    system_coordinates: tuple[float, float, float] = (0.0, 0.0, 0.0)
-    previous_system_coordinates: tuple[float, float, float] = (0.0, 0.0, 0.0)
-    system_address: int = 0
-    bodies: defaultdict[int, dict[str, Any]] = defaultdict(dict)
-    clusters:                   set[int] = set()
-    stars:                      set[int] = set()
-    icy_bodies:                 set[int] = set()
-    rocky_icy_bodies:           set[int] = set()
-    rocky_bodies:               set[int] = set()
-    metal_rich_bodies:          set[int] = set()
-    high_metal_content_bodies:  set[int] = set()
-    earth_like_world_bodies:    set[int] = set()
-    ammonia_world_bodies:       set[int] = set()
-    water_world_bodies:         set[int] = set()
-    gas_giant_bodies:           set[int] = set()
-    landables:                  set[int] = set()
-    atmospherics:               set[int] = set()
-    ringed:                     set[int] = set()
-    terraformables:             set[int] = set()
-    volcanisms:                 set[int] = set()
-    biologicals:                set[int] = set()
-    geologicals:                set[int] = set()
-    guardians:                  set[int] = set()
-    thargoids:                  set[int] = set()    
+    state: CoreProgramState = CoreProgramState()
 
     # TODO: separate out different gas giant types
 
@@ -206,67 +261,12 @@ class CoreProgram(Program):
         self.print("<error>Consider re-enabling, unless you really know what you are doing!</error>")
 
     def save_state(self) -> None:
-        state: dict[str, Any] = {
-                "enabled":                      self.enabled,
-                "event_hose_enabled":           self.event_hose_enabled,
-                "current_system":               self.current_system,
-                "system_coordinates":           self.system_coordinates,
-                "previous_system_coordinates":  self.previous_system_coordinates,
-                "system_address":               self.system_address,
-                "bodies":                       self.bodies,
-                "stars":                        list(self.stars),
-                "clusters":                     list(self.clusters),
-                "icy_bodies":                   list(self.icy_bodies),
-                "rocky_icy_bodies":             list(self.rocky_icy_bodies),
-                "rocky_bodies":                 list(self.rocky_bodies),
-                "metal_rich_bodies":            list(self.metal_rich_bodies),
-                "high_metal_content_bodies":    list(self.high_metal_content_bodies),
-                "earth_like_world_bodies":      list(self.earth_like_world_bodies),
-                "ammonia_world_bodies":         list(self.ammonia_world_bodies),
-                "water_world_bodies":           list(self.water_world_bodies),
-                "gas_giant_bodies":             list(self.gas_giant_bodies),
-                "landables":                    list(self.landables),
-                "atmospherics":                 list(self.atmospherics),
-                "ringed":                       list(self.ringed),
-                "volcanisms":                   list(self.volcanisms),
-                "terraformables":               list(self.terraformables),
-                "biologicals":                  list(self.biologicals),
-                "geologicals":                  list(self.geologicals),
-                "guardians":                    list(self.guardians),
-                "thargoids":                    list(self.thargoids),
-            }
-        json.dump(state, self.state_file_path.open("w"))
+        if not self.caught_up: return
+        self.state_file_path.write_bytes(msgspec.json.encode(self.state))
 
     def load_state(self) -> None:
         if self.state_file_path.exists():
-            state = json.load(self.state_file_path.open())
-            self.enabled =                      state["enabled"]
-            self.event_hose_enabled =           state["event_hose_enabled"]
-            self.current_system =               state["current_system"]
-            self.system_coordinates =           tuple(state["system_coordinates"])
-            self.previous_system_coordinates =  tuple(state["previous_system_coordinates"])
-            self.system_address =               state["system_address"]
-            self.bodies =                       defaultdict(dict, state["bodies"])
-            self.stars =                        set(state["stars"])
-            self.clusters =                     set(state["clusters"])
-            self.icy_bodies =                   set(state["icy_bodies"])
-            self.rocky_icy_bodies =             set(state["rocky_icy_bodies"])
-            self.rocky_bodies =                 set(state["rocky_bodies"])
-            self.metal_rich_bodies =            set(state["metal_rich_bodies"])
-            self.high_metal_content_bodies =    set(state["high_metal_content_bodies"])
-            self.earth_like_world_bodies =      set(state["earth_like_world_bodies"])
-            self.ammonia_world_bodies =         set(state["ammonia_world_bodies"])
-            self.water_world_bodies =           set(state["water_world_bodies"])
-            self.gas_giant_bodies =             set(state["gas_giant_bodies"])
-            self.landables =                    set(state["landables"])
-            self.atmospherics =                 set(state["atmospherics"])
-            self.ringed =                       set(state["ringed"])
-            self.terraformables =               set(state["terraformables"])
-            self.volcanisms =                   set(state["volcanisms"])
-            self.biologicals =                  set(state["biologicals"])
-            self.geologicals =                  set(state["geologicals"])
-            self.guardians =                    set(state["guardians"])
-            self.thargoids =                    set(state["thargoids"])
+            self.state = msgspec.json.decode(self.state_file_path.read_bytes(), type = CoreProgramState) # pyright: ignore[reportIncompatibleVariableOverride]
 
     def process_user_input(self, arguments: list[str]) -> None:
         if arguments[0] in ["core", "main", "base", "edsst"]:
@@ -275,11 +275,19 @@ class CoreProgram(Program):
                     if len(arguments) < 3: pass
                     match arguments[2]:
                         case "enable" | "on":
-                            self.event_hose_enabled = True
-                            self.save_state()
+                            if self.event_stream_enabled: 
+                                self.print("<yellow>Display of Event Stream already enabled!</yellow>")
+                            else:
+                                self.event_stream_enabled = True
+                                self.save_state()
+                                self.print("Event Stream is now displayed.")
                         case "disable" | "off":
-                            self.event_hose_enabled = False
-                            self.save_state()
+                            if not self.event_stream_enabled: 
+                                self.print("<yellow>Display of Event Stream already disabled!</yellow>")
+                            else:
+                                self.event_stream_enabled = False
+                                self.save_state()
+                                self.print("Event Stream is no longer displayed.")
                         case _: pass
                 case _: pass
         else:
@@ -287,7 +295,9 @@ class CoreProgram(Program):
 
     def process_event(self, event: Any) -> None:
         super().process_event(event)
-        if self.event_hose_enabled: self.print(event["event"])
+        if self.event_stream_enabled: self.print(event["event"])
+        bodyID = -1
+        if "BodyID" in event: bodyID = int(event["BodyID"])
         match event["event"]:
             case "Commander":
                 name = str(event["Name"])
@@ -296,97 +306,74 @@ class CoreProgram(Program):
                     self.commander_name = str(name)
                     self.commander_greeted = True
             case "Scan":
-                self.bodies[int(event["BodyID"])][event["event"]] = event
-                if "Rings" in event:
-                    self.ringed.add(event["BodyID"])
-                if "StarType" in event:
-                    self.stars.add(event["BodyID"])
+                self.state.current_system.bodies.add_body_signal(event)
+                if event["WasDiscovered"] == False:         self.state.current_system.bodies.record_attribute(BodyAttribute.first_discovery, bodyID)
+                if event["WasMapped"] == False:             self.state.current_system.bodies.record_attribute(BodyAttribute.first_possible_map, bodyID)
+                if event["WasFootfalled"] == False:         self.state.current_system.bodies.record_attribute(BodyAttribute.first_possible_footfall, bodyID)
+                if "Cluster" in str(event["BodyName"]).removeprefix(self.state.current_system.name): 
+                                                            self.state.current_system.bodies.record_attribute(BodyAttribute.cluster, bodyID)
                 else:
-                    if "TerraformState" in event:
-                        if event["TerraformState"] == "Terraformable":
-                            self.terraformables.add(event["BodyID"])
-                    if "AtmosphereType" in event:
-                        if event["AtmosphereType"] != "None":
-                            self.atmospherics.add(event["BodyID"])
-                    if "Volcanism" in event:
-                        if event["Volcanism"]:
-                            self.volcanisms.add(event["BodyID"])
-                    if "Landable" in event:
-                        if event["Landable"]:
-                            self.landables.add(event["BodyID"])
-                    if "PlanetClass" in event:
-                        match event["PlanetClass"]:
-                            case "Icy body":                self.icy_bodies.add(event["BodyID"])
-                            case "Rocky ice body":          self.rocky_icy_bodies.add(event["BodyID"])
-                            case "Rocky body":              self.rocky_bodies.add(event["BodyID"])
-                            case "Metal rich body":         self.metal_rich_bodies.add(event["BodyID"])
-                            case "High metal content body": self.high_metal_content_bodies.add(event["BodyID"])
-                            case "Earth-like world":        self.earth_like_world_bodies.add(event["BodyID"])
-                            case "Ammonia world":           self.ammonia_world_bodies.add(event["BodyID"])
-                            case "Water world":             self.water_world_bodies.add(event["BodyID"])
-                            case _:                         self.gas_giant_bodies.add(event["BodyID"])
+                    if "Rings" in event:                    self.state.current_system.bodies.record_attribute(BodyAttribute.ringed, bodyID)
+                    if "StarType" in event:             
+                        self.state.current_system.bodies.record_attribute(BodyAttribute.star, bodyID)
                     else:
-                        self.clusters.add(event["BodyID"])
+                        if event["TerraformState"]:         self.state.current_system.bodies.record_attribute(BodyAttribute.terraformable, bodyID)
+                        if event["Volcanism"]:              self.state.current_system.bodies.record_attribute(BodyAttribute.volcanic, bodyID)
+                        if event["Landable"]:               self.state.current_system.bodies.record_attribute(BodyAttribute.landable, bodyID)
+                        if "AtmosphereType" in event:
+                            if event["AtmosphereType"]!="None": 
+                                                            self.state.current_system.bodies.record_attribute(BodyAttribute.atmospheric, bodyID)
+                        match event["PlanetClass"]:
+                            case "Icy body":                self.state.current_system.bodies.record_attribute(BodyAttribute.icy_body, bodyID)
+                            case "Rocky ice body":          self.state.current_system.bodies.record_attribute(BodyAttribute.rocky_icy_body, bodyID)
+                            case "Rocky body":              self.state.current_system.bodies.record_attribute(BodyAttribute.rocky_body, bodyID)
+                            case "Metal rich body":         self.state.current_system.bodies.record_attribute(BodyAttribute.metal_rich_body, bodyID)
+                            case "High metal content body": self.state.current_system.bodies.record_attribute(BodyAttribute.high_metal_content_body, bodyID)
+                            case "Earth-like world":        self.state.current_system.bodies.record_attribute(BodyAttribute.earth_like_world_body, bodyID)
+                            case "Ammonia world":           self.state.current_system.bodies.record_attribute(BodyAttribute.ammonia_world_body, bodyID)
+                            case "Water world":             self.state.current_system.bodies.record_attribute(BodyAttribute.water_world_body, bodyID)
+                            case _:                         self.state.current_system.bodies.record_attribute(BodyAttribute.gas_giant_body, bodyID)
                 self.save_state()
+
             case "FSSBodySignals":
-                self.bodies[int(event["BodyID"])][event["event"]] = event
-                bodyID = int(event["BodyID"])
+                self.state.current_system.bodies.add_body_signal(event)
                 for signal in event["Signals"]:
                     match signal["Type"]:
-                        case "$SAA_SignalType_Biological;":
-                            self.biologicals.add(bodyID)
-                        case "$SAA_SignalType_Geological;":
-                            self.geologicals.add(bodyID)
-                        case "$SAA_SignalType_Guardian;":
-                            self.guardians.add(bodyID)
-                        case "$SAA_SignalType_Thargoid;":
-                            self.thargoids.add(bodyID)
+                        case "$SAA_SignalType_Biological;": self.state.current_system.bodies.record_attribute(BodyAttribute.bios, bodyID)
+                        case "$SAA_SignalType_Geological;": self.state.current_system.bodies.record_attribute(BodyAttribute.geos, bodyID)
+                        case "$SAA_SignalType_Guardian;":   self.state.current_system.bodies.record_attribute(BodyAttribute.guardians, bodyID)
+                        case "$SAA_SignalType_Thargoid;":   self.state.current_system.bodies.record_attribute(BodyAttribute.thargoids, bodyID)
                         case _: pass
-                    self.save_state()
-            case "SAAScanComplete":
-                self.bodies[event["BodyID"]][event["event"]] = event
+                self.save_state()
+
+            case "SAAScanComplete": 
+                self.state.current_system.bodies.add_body_signal(event)
+                self.state.current_system.bodies.record_attribute(BodyAttribute.saa_scan, bodyID)
                 self.save_state()
             case "SAASignalsFound":
-                self.bodies[event["BodyID"]][event["event"]] = event
+                self.state.current_system.bodies.add_body_signal(event)
+                self.state.current_system.bodies.record_attribute(BodyAttribute.saa_signal, bodyID)
                 self.save_state()
             case "StartJump":
-                self.bodies.clear()
-                self.stars.clear()
-                self.clusters.clear()
-                self.icy_bodies.clear()
-                self.rocky_icy_bodies.clear()
-                self.rocky_bodies.clear()
-                self.metal_rich_bodies.clear()
-                self.high_metal_content_bodies.clear()
-                self.earth_like_world_bodies.clear()
-                self.ammonia_world_bodies.clear()
-                self.water_world_bodies.clear()
-                self.gas_giant_bodies.clear()
-                self.landables.clear()
-                self.atmospherics.clear()
-                self.ringed.clear()
-                self.volcanisms.clear()
-                self.terraformables.clear()
-                self.biologicals.clear()
-                self.geologicals.clear()
+                #set current system to previous and initialize new system
 
                 self.save_state()
             case "FSDJump":
-                self.previous_system_coordinates = self.system_coordinates
-                self.current_system = event["StarSystem"]
-                self.system_coordinates = (event["StarPos"][0], event["StarPos"][1], event["StarPos"][2])
-                self.system_address = event["SystemAddress"]
+                self.state.previous_system.coordinates = self.state.current_system.coordinates
+                self.state.current_system.name = event["StarSystem"]
+                self.state.current_system.coordinates = (event["StarPos"][0], event["StarPos"][1], event["StarPos"][2])
+                self.state.current_system.address = event["SystemAddress"]
                 self.save_state()
-                distance_jumped = get_distance(self.previous_system_coordinates, self.system_coordinates)
-                self.print("Jumped " + str(round(distance_jumped, 2)) + "Ly to system: " + self.current_system)
+                distance_jumped = get_distance(self.state.previous_system.coordinates, self.state.current_system.coordinates)
+                self.print("Jumped " + str(round(distance_jumped, 2)) + "Ly to system: " + self.state.current_system.name)
             case _: pass
 
 class FSSReporter(Program):
     style = Style.from_dict({
         "survey_color": "#00ffff",
-        "terraformables": "#6060ff",
-        "biologicals": "#00ff00",
-        "geologicals": "#ffff00",
+        "valuable": "#6060ff",
+        "biological": "#00ff00",
+        "geological": "#ffff00",
     })
 
     SURVEY_NAME = "FSSReporter"
@@ -401,50 +388,41 @@ class FSSReporter(Program):
         super().process_event(event)
         match event["event"]:
             case "FSSAllBodiesFound":
-                self.print("<survey_color>\nFull system scan of " + self.core.current_system + " complete!</survey_color>\n")
-                valuables: list[str] = []
-                for valuable in self.core.terraformables | self.core.earth_like_world_bodies | self.core.ammonia_world_bodies | self.core.water_world_bodies:
-                    attributes = str(
-                                " (" + 
-                                        str(self.core.bodies[valuable]["Scan"]["PlanetClass"]) + 
-                                        str(" + Terraformable" if valuable in self.core.terraformables else "") + 
-                                        ")"
-                                    )
-                    valuables.append(self.core.bodies[valuable]["Scan"]["BodyName"] + attributes)
-                if valuables:
-                    self.print("<terraformables>Valuable planets: " + 
-                                    str(len(valuables)) + 
-                                    "</terraformables>", 
-                                    prefix="")
-                    for valuable in valuables:
-                        self.print("<terraformables>\t" + 
-                                   str(valuable) + 
-                                   "</terraformables>", 
-                                   prefix="")
-                if self.core.biologicals:
-                    self.print("<biologicals>Biological signatures: " + 
-                                    str(len(self.core.biologicals)) + 
-                                    " (" + 
-                                    str(len(self.core.biologicals)) + 
-                                    ")</biologicals>", 
-                                    prefix="")
-                    for biological in self.core.biologicals:
-                        self.print("<biologicals>\t" + 
-                                   str(self.core.bodies[biological]["FSSBodySignals"]["BodyName"]) + 
-                                   "</biologicals>", 
-                                   prefix="")
-                if self.core.geologicals:
-                    self.print("<geologicals>Geological signatures: " + 
-                                    str(len(self.core.geologicals)) + 
-                                    " (" + 
-                                    str(len(self.core.geologicals)) + 
-                                    ")</geologicals>", 
-                                    prefix="")
-                    for geological in self.core.geologicals:
-                        self.print("<geologicals>\t" + 
-                                    str(self.core.bodies[geological]["FSSBodySignals"]["BodyName"]) + 
-                                    "</geologicals>", 
-                                    prefix="")
+                system_name = self.core.state.current_system.name
+                self.print("<survey_color>\nFull system scan of " + self.core.state.current_system.name + " complete!</survey_color>\n")
+                bodies = self.core.state.current_system.bodies
+                valuables = bodies.get_bodies_by_attribute(BodyAttribute.terraformable, BodyAttribute.earth_like_world_body, BodyAttribute.water_world_body, BodyAttribute.ammonia_world_body, sorted = True)
+                self.print("<valuable>Valuable planets: " + str(len(valuables)) + "</valuable>")
+                for planet in valuables:
+                    self.print("\t<valuable>" + 
+                               str(planet["BodyName"]).removeprefix(system_name) + 
+                               " - (" 
+                               + str(planet["PlanetClass"]) + 
+                               " + Terraformable)</valuable>" if planet["TerraformState"] == "Terraformable" else ")</valuable>")
+                    
+                biologicals = bodies.get_bodies_by_attribute(BodyAttribute.bios, sorted = True)
+                total_bio_count = 0
+                bio_count: list[int] = []
+                for bio in biologicals: 
+                    for signal in bio["Signals"]:
+                        bios: int = int(signal["Count"]) if signal["Type"] == "$SAA_SignalType_Biological;" else 0
+                        total_bio_count += bios
+                        bio_count.append(bios)
+                self.print(f"\n<biological>Biological signatures: {len(biologicals)} / {bio_count}</biological>" )
+                for i, planet in enumerate(biologicals):
+                    self.print(f"\t<biological>{planet["BodyName"].removeprefix(system_name)} - ({bio_count[i]})</biological>")
+
+                geologicals = bodies.get_bodies_by_attribute(BodyAttribute.bios, sorted = True)
+                total_geo_count = 0
+                geo_count: list[int] = []
+                for geo in geologicals: 
+                    for signal in geo["Signals"]:
+                        geos: int = int(signal["Count"]) if signal["Type"] == "$SAA_SignalType_Geological;" else 0
+                        total_geo_count += geos
+                        geo_count.append(geos)
+                self.print(f"\n<geological>Biological signatures: {len(geologicals)} / {geo_count}</geological>" )
+                for i, planet in enumerate(geologicals):
+                    self.print(f"\t<geological>{planet["BodyName"].removeprefix(system_name)} - ({geo_count[i]})</geological>")
             case _: pass
 
 class BoxelSurvey(Program):
@@ -485,6 +463,15 @@ class BoxelSurvey(Program):
 
     def load_next_system(self) -> str:
         return self.system_list.pop(0)
+    
+    def save_state(self) -> None:
+        state: dict[str, Any] = {"enabled":self.enabled, "version":self.SURVEY_VERSION}
+        json.dump(state, self.state_file_path.open("w"))
+
+    def load_state(self) -> None:
+        if self.state_file_path.exists():
+            state = json.load(self.state_file_path.open())
+            self.enabled = state["enabled"]
 
 class DW3DensityColumnSurvey(Program):
     style = Style.from_dict({
@@ -538,7 +525,7 @@ class DW3DensityColumnSurvey(Program):
         if self.survey_ongoing:
             match event["event"]:
                 case "FSDJump":
-                    current_height = self.core.system_coordinates[1]
+                    current_height = self.core.state.current_system.coordinates[1]
                     if abs(current_height - self.get_expected_galactic_height()) < self.MAX_HEIGHT_DEVIATION:
                         self.valid_system = True
                         self.print("System valid for survey!")
@@ -559,7 +546,7 @@ class DW3DensityColumnSurvey(Program):
 
         if len(arguments) > 1:
             if arguments[0] in ["dcs", "dc", "column", "densitycolumn", "densitycolumnsurvey", "dw3densitycolumnsurvey"] and self.enabled:
-                galactic_height = self.core.system_coordinates[1]
+                galactic_height = self.core.state.current_system.coordinates[1]
                 count = 0
                 distance = 0.0
                 match arguments[1]:
@@ -576,10 +563,10 @@ class DW3DensityColumnSurvey(Program):
                             self.start_height = -1000 if galactic_height < -500 else 0 if galactic_height < 500 else 1000
                             self.system_in_sequence = 0
                             self.survey_ongoing = True
-                            self.survey_file_path = Path(self.survey_dir / str(self.core.current_system + ".tsv"))
+                            self.survey_file_path = Path(self.survey_dir / str(self.core.state.current_system.name + ".tsv"))
                             self.enable()
                             self.save_state()
-                            self.print("<survey_color>Started Density Column Survey from system: </survey_color>" + self.core.current_system)
+                            self.print("<survey_color>Started Density Column Survey from system: </survey_color>" + self.core.state.current_system.name)
                             self.print("Please make sure to enter current system's count and max distance before continuing!")
                             return
                         else:
@@ -649,7 +636,7 @@ class DW3DensityColumnSurvey(Program):
                 super().process_user_input(arguments)
                 
     def process_datapoint(self, count: int, distance: float) -> None:
-        current_height = self.core.system_coordinates[1]
+        current_height = self.core.state.current_system.coordinates[1]
         if not self.valid_system:
             self.print("<error>Current system is not valid for survey - Height deviation too large!</error>")
             self.print("Current galactic height: <error>" + 
@@ -662,18 +649,18 @@ class DW3DensityColumnSurvey(Program):
         #Rho is calculated based on the direct translation of the formula in the DW3 Stellar Density Scan Worksheet spreadsheet: 
         # =IFS(D6=50,50/((4*PI()/3)*(E6^3)),D6<50,D6/((4*pi()/3)*(20^3)))
         datapoint = str(
-            str(self.core.current_system) + "\t" +
+            str(self.core.state.current_system) + "\t" +
             str(self.get_expected_galactic_height()) + "\t" +
             str(count) + "\t" +
             str(count + 1) + "\t" +
             str(distance) + "\t" +
             str(rho) + "\t" +
-            str(self.core.system_coordinates[0]) + "\t" +
-            str(self.core.system_coordinates[2]) + "\t" +
-            str(self.core.system_coordinates[1])
+            str(self.core.state.current_system.coordinates[0]) + "\t" +
+            str(self.core.state.current_system.coordinates[2]) + "\t" +
+            str(self.core.state.current_system.coordinates[1])
         )
         open(self.survey_file_path, "a").write(json.dumps(datapoint) + "\n")
-        self.print("<survey_color>Recorded datapoint for system: </survey_color>" + self.core.current_system)
+        self.print("<survey_color>Recorded datapoint for system: </survey_color>" + self.core.state.current_system.name)
         self.print(datapoint)
         self.system_in_sequence += 1
         self.system_surveyed = True
