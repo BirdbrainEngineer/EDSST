@@ -2,71 +2,114 @@
 
 from pathlib import Path
 from typing import Iterator
+import toml
 from watchfiles import awatch # pyright: ignore[reportUnknownVariableType]
 import json
 import asyncio
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 
-from src.program import CoreProgram, FSSReporter, BoxelSurvey, DensityColumnSurvey, Program
+from src.program import CoreProgram, FSSReporter, BoxelSurvey, DW3DensityColumnSurvey, Program
 
+config = toml.load("config.toml")
 
-LOG_DIRECTORY = Path("/home/***REMOVED***/.local/share/Steam/steamapps/compatdata/359320/pfx/drive_c/users/steamuser/Saved Games/Frontier Developments/Elite Dangerous/")
+log_directory = Path(config["elite_dangerous_journal_path"])
 
-core_program = CoreProgram()
-programs: list[Program] = []
-programs.append(core_program)
-programs.append(FSSReporter(core_program))
-programs.append(BoxelSurvey(core_program))
-programs.append(DensityColumnSurvey())
+def get_latest_journal_file_path() -> None | Path:
+    log_paths: Iterator[Path] = log_directory.glob("Journal.*.log")
 
-programs[1].enable()
-
-
-async def event_loop():
-    log_paths: Iterator[Path] = LOG_DIRECTORY.glob("Journal.*.log")
-
-    latest_log_path: Path | None = None
+    latest_journal_file_path: Path | None = None
     for path in log_paths:
-        if latest_log_path is None:
-            latest_log_path = path
-        latest_log_path = max(latest_log_path, path)
+        if latest_journal_file_path is None:
+            latest_journal_file_path = path
+        latest_journal_file_path = max(latest_journal_file_path, path)
     
-    if not latest_log_path:
-        exit("No valid log file found!")
-        
-    print("Elite Stellar Survey Tools successfully booted.")
-    
-    with open(latest_log_path) as file:
-        ##parse through the logfile
-        for line in file.read().strip().split("\n"):
-                if not line: 
-                    continue
-                event = json.loads(line)
-                for program in programs:
-                    program.process_past_event(event)
-                
-        
-        ##start listening to the logfile
-        async for changes in awatch(latest_log_path):
-            del changes
-            for line in file.read().strip().split("\n"):
-                if not line: 
-                    continue
-                event = json.loads(line)
-                for program in programs:
-                    if program.active:
-                        program.process_event(event)
+    return latest_journal_file_path
 
-async def input_loop():
+async def listen_for_events():
+    initial_journal_file_path = get_latest_journal_file_path()
+
+    if initial_journal_file_path:
+        latest_journal_file_path = initial_journal_file_path
+        with open(initial_journal_file_path) as file:
+            file_by_lines = file.read().strip().split("\n")
+            for line in file_by_lines:
+                if not line: 
+                    continue
+                event = json.loads(line)
+                if event["event"] == "Shutdown":
+                    latest_journal_file_path = None
+                yield "past", event
+    else:
+        latest_journal_file_path = None
+    
+    print("Done processing past events")
+
+    while True:
+        if latest_journal_file_path:
+            with open(latest_journal_file_path) as file:
+                if latest_journal_file_path == initial_journal_file_path:
+                    file.read()
+                ##start listening to the logfile
+                async for changes in awatch(latest_journal_file_path):
+                    del changes
+                    for line in file.read().strip().split("\n"):
+                        if not line: 
+                            continue
+                        event = json.loads(line)
+                        if event["event"] == "Shutdown":
+                            break
+                        yield "current", event
+        
+        print("ESST: Elite: Dangerous not running. Waiting for new journal log file.")
+        # Wait for new log to be created
+        async for log_directory_changes in awatch(log_directory):
+            del log_directory_changes
+            new_latest_journal_file_path = get_latest_journal_file_path()
+            if not new_latest_journal_file_path or latest_journal_file_path == new_latest_journal_file_path:
+                continue
+            else:
+                latest_journal_file_path = new_latest_journal_file_path
+                print("ESST: Found new journal log file.")
+
+async def event_loop(modules: list[Program]):
+    async for type, event in listen_for_events():        
+        for module in modules:
+            if module.enabled:
+                match type:
+                    case "past":
+                        module.process_past_event(event)
+                    case "current":
+                        module.process_event(event)
+
+async def input_loop(modules: list[Program], event_loop_task: asyncio.Task) -> None: # pyright: ignore[reportUnknownParameterType, reportMissingTypeArgument]
     session = PromptSession() # pyright: ignore[reportUnknownVariableType]
     while True:
         with patch_stdout():
-            result = await session.prompt_async("Say something: ") # pyright: ignore[reportUnknownVariableType]
-        for program in programs:
-            program.process_user_input(str(result)) # pyright: ignore[reportUnknownArgumentType]
+            result = await session.prompt_async(">>> ") # pyright: ignore[reportUnknownVariableType]
+            if str(result) == "exit": # pyright: ignore[reportUnknownArgumentType]
+                event_loop_task.cancel()
+                return
+        for module in modules:
+            module.process_user_input(str(result).lower().split()) # pyright: ignore[reportUnknownArgumentType]
 
 async def main():
-    await asyncio.gather(event_loop(), input_loop())
+
+    #TODO: Make loading of modules dynamic
+
+    modules: list[Program] = []
+    core_module = CoreProgram()
+    modules.append(core_module)
+    modules.append(FSSReporter(core_module))
+    modules.append(BoxelSurvey(core_module))
+    modules.append(DW3DensityColumnSurvey(core_module))
+        
+    print("Elite Stellar Survey Tools successfully booted.")
+
+    async with asyncio.TaskGroup() as tg:
+        event_loop_task = tg.create_task(event_loop(modules))
+        input_loop_task = tg.create_task(input_loop(modules, event_loop_task)) # pyright: ignore[reportUnusedVariable]
 
 asyncio.run(main())
+
+exit("Elite Stellar Survey Tools spooling down...\nFarewell, Commander!")

@@ -1,8 +1,11 @@
 from pathlib import Path
 from math import sqrt
 import subprocess
+import toml
 
-WL_COPY_BIN_PATH = Path("/home/***REMOVED***/Documents/Programming/wl-clipboard-rs/target/debug/wl-copy")
+config = toml.load("config.toml")
+
+WL_COPY_BIN_PATH = Path(config["wl_copy_bin_path"])
 
 def text_to_clipboard(text: str) -> None:
     ##print("text: ", text) ##uncomment for simple debugging

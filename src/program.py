@@ -1,44 +1,63 @@
 from collections import defaultdict
 from typing import Any
 from pathlib import Path
-from cli_color_py import bright_blue, bright_cyan, bright_green, yellow # pyright: ignore[reportMissingTypeStubs]
-    ##black, red, green, yellow, blue, magenta, cyan, white, bright_red, bright_green, bright_yellow, bright_blue, bright_magenta, bright_cyan
-from src.util import text_to_clipboard, get_distance, reserialize_file
+from src.util import text_to_clipboard, get_distance, reserialize_file, read_file_by_lines
+from prompt_toolkit import print_formatted_text
+from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.styles import Style
+import math
 import json
 
+global_style = Style.from_dict({
+    "error": "#ff0000",
+})
+
 class Program():
-    SURVEY_NAME: str = "unnamed_survey"
+    style = Style.from_dict({
+        "survey_color": "#ffffff",
+    })
+
+    SURVEY_NAME: str = "UNNAMED_SURVEY"
     survey_dir: Path
     state_file_path: Path
-    active: bool = False
+    enabled: bool = False
 
     def __init__(self) -> None:
-        print("ESST: Loading module: " + self.SURVEY_NAME.lower())
+        self.print("Loading module...", end="")
         self.survey_dir = Path("surveys") / Path(self.SURVEY_NAME.lower())
         self.state_file_path = self.survey_dir / Path(self.SURVEY_NAME.lower() + "_state")
         if not self.survey_dir.exists():
             self.survey_dir.mkdir()
-        self.load_state()
-        self.save_state()
+        try:
+            self.load_state()
+            self.print("Enabled" if self.enabled else "Disabled", prefix="")
+            self.save_state()
+        except Exception as e: # pyright: ignore[reportUnusedVariable]
+            print("")
+            self.print("Initializing a new state file... First time running? Or previous state file corrupted!")
+            self.enabled = False
+            self.print("Disabled")
+            self.save_state()
+        self.style = Style(self.style.style_rules + global_style.style_rules)
 
     def enable(self) -> None:
-        self.active = True
+        self.enabled = True
         self.save_state()
-        print("ESST: " + self.SURVEY_NAME + " enabled!")
+        self.print("enabled!")
 
     def disable(self) -> None:
-        self.active = False
+        self.enabled = False
         self.save_state()
-        print("ESST: " + self.SURVEY_NAME + " disabled!")
+        self.print("disabled!")
 
     def save_state(self) -> None:
-        state: dict[str, Any] = {"active":self.active}
+        state: dict[str, Any] = {"active":self.enabled}
         json.dump(state, self.state_file_path.open("w"))
 
     def load_state(self) -> None:
         if self.state_file_path.exists():
             state = json.load(self.state_file_path.open())
-            self.active = state["active"]
+            self.enabled = state["active"]
 
     def process_past_event(self, event: Any) -> None:
         pass
@@ -46,13 +65,31 @@ class Program():
     def process_event(self, event: Any) -> None:
         pass
 
-    def process_user_input(self, user_input: str) -> None:
-        if(user_input.lower() == "enable " + self.SURVEY_NAME.lower()):
-            self.enable()
-        elif(user_input.lower() == "disable " + self.SURVEY_NAME.lower()):
-            self.disable()
+    def process_user_input(self, arguments: list[str]) -> None:
+        if len(arguments) == 0:
+            return
+        elif arguments[0] == self.SURVEY_NAME.lower():
+            if len(arguments) < 2:
+                self.print("<error>Received no commands!</error>")
+                return
+            match arguments[1]:
+                case "enable":
+                    self.enable()
+                case "disable":
+                    self.disable()
+                case _: self.print("<error>Received unknown command - </error>" + arguments[1])
+
+    def print(self, *values: object, sep: str | None = " ", end: str | None = "\n", prefix: str | None = None) -> None:
+        if prefix is not None:
+            print_formatted_text(prefix, *values, sep=sep, end=end, style=self.style) # pyright: ignore[reportArgumentType]
+        else:
+            print_formatted_text(HTML(f"<survey_color>{self.SURVEY_NAME}</survey_color>: "), *values, sep=sep, end=end, style=self.style) # pyright: ignore[reportArgumentType]
+
 
 class CoreProgram(Program):
+    style = Style.from_dict({
+        "survey_color": "#ff7700",
+    })
     SURVEY_NAME = "core"
     active = True
     commander_greeted = False
@@ -86,18 +123,18 @@ class CoreProgram(Program):
     # TODO: Spansh and/or EDSM integration.
 
     def enable(self) -> None:
-        self.active = True
+        self.enabled = True
         self.save_state()
-        print("ESST: Core module is always enabled!")
+        self.print("ESST: Core module is always enabled!")
 
     def disable(self) -> None:
-        self.active = True
+        self.enabled = True
         self.save_state()
-        print("ESST: Core module cannot be disabled!")
+        self.print("ESST: Core module cannot be disabled!")
 
     def save_state(self) -> None:
         state: dict[str, Any] = {
-                "active":                       self.active,
+                "active":                       self.enabled,
                 "current_system":               self.current_system,
                 "system_coordinates":           self.system_coordinates,
                 "system_address":               self.system_address,
@@ -128,7 +165,7 @@ class CoreProgram(Program):
     def load_state(self) -> None:
         if self.state_file_path.exists():
             state = json.load(self.state_file_path.open())
-            self.active = True
+            self.enabled = True
             self.current_system =               state["current_system"]
             self.system_coordinates =           tuple(state["system_coordinates"])
             self.system_address =               state["system_address"]
@@ -158,14 +195,12 @@ class CoreProgram(Program):
         match event["event"]:
             case "Commander":
                 if not self.commander_greeted:
-                    print("Welcome, Commander " + event["Name"])
+                    self.print("Welcome, Commander " + event["Name"])
                     self.commander_greeted = True
-            case "Shutdown":
-                print("Elite: Dangerous not launched!\nExiting.")
-                exit()
             case _: pass
 
     def process_event(self, event: Any) -> None:
+        self.print(event["event"])
         match event["event"]:
             case "Shutdown":
                 exit("Elite Stellar Survey Tools spooling down...\nFarewell, Commander!")
@@ -252,66 +287,90 @@ class CoreProgram(Program):
                 self.system_address = event["SystemAddress"]
                 self.save_state()
                 distance_jumped = get_distance(previous_coordinates, self.system_coordinates)
-                print("Jumped " + str(round(distance_jumped, 2)) + "Ly to system: " + self.current_system)
+                self.print("Jumped " + str(round(distance_jumped, 2)) + "Ly to system: " + self.current_system)
             case _: pass
 
 class FSSReporter(Program):
-    SURVEY_NAME = "FSSReporter"
-    core_program: CoreProgram
+    style = Style.from_dict({
+        "survey_color": "#00ffff",
+        "terraformables": "#6060ff",
+        "biologicals": "#00ff00",
+        "geologicals": "#ffff00",
+    })
 
-    def __init__(self, core_program: CoreProgram) -> None:
+    SURVEY_NAME = "FSSReporter"
+    core: CoreProgram
+
+    def __init__(self, core: CoreProgram) -> None:
         super().__init__()
-        self.core_program = core_program
+        self.core = core
 
     def process_event(self, event: Any) -> None:
         match event["event"]:
             case "FSSAllBodiesFound":
-                print(bright_cyan("\nFull system scan of " + self.core_program.current_system + " complete!\n"))
+                self.print(HTML("<survey_color>\nFull system scan of " + self.core.current_system + " complete!</survey_color>\n"))
                 valuables: list[str] = []
-                for valuable in self.core_program.terraformables | self.core_program.earth_like_world_bodies | self.core_program.ammonia_world_bodies | self.core_program.water_world_bodies:
+                for valuable in self.core.terraformables | self.core.earth_like_world_bodies | self.core.ammonia_world_bodies | self.core.water_world_bodies:
                     attributes = str(
                                 " (" + 
-                                        str(self.core_program.bodies[valuable]["Scan"]["PlanetClass"]) + 
-                                        str(" + Terraformable" if valuable in self.core_program.terraformables else "") + 
+                                        str(self.core.bodies[valuable]["Scan"]["PlanetClass"]) + 
+                                        str(" + Terraformable" if valuable in self.core.terraformables else "") + 
                                         ")"
                                     )
-                    valuables.append(self.core_program.bodies[valuable]["Scan"]["BodyName"] + attributes)
+                    valuables.append(self.core.bodies[valuable]["Scan"]["BodyName"] + attributes)
                 if valuables:
-                    print(bright_blue("Valuable planets: " + str(len(valuables))))
+                    self.print(HTML("<terraformables>Valuable planets: " + 
+                                    str(len(valuables)) + 
+                                    "</terraformables>"), 
+                                    prefix="")
                     for valuable in valuables:
-                        print(bright_blue("\t" + str(valuable)))
-                if self.core_program.biologicals:
-                    print(bright_green("Biological signatures: " + str(len(self.core_program.biologicals)) + " (" + str(len(self.core_program.biologicals)) + ")"))
-                    for biological in self.core_program.biologicals:
-                        print(bright_green("\t" + str(self.core_program.bodies[biological]["FSSBodySignals"]["BodyName"])))
-                if self.core_program.geologicals:
-                    print(yellow("Geological signatures: " + str(len(self.core_program.geologicals)) + " (" + str(len(self.core_program.geologicals)) + ")"))
-                    for geological in self.core_program.geologicals:
-                        print(yellow("\t" + str(self.core_program.bodies[geological]["FSSBodySignals"]["BodyName"])))
+                        self.print(HTML("<terraformables>\t" + 
+                                   str(valuable) + 
+                                   "</terraformables>"), 
+                                   prefix="")
+                if self.core.biologicals:
+                    self.print(HTML("<biologicals>Biological signatures: " + 
+                                    str(len(self.core.biologicals)) + 
+                                    " (" + 
+                                    str(len(self.core.biologicals)) + 
+                                    ")</biologicals>"), 
+                                    prefix="")
+                    for biological in self.core.biologicals:
+                        self.print(HTML("<biologicals>\t" + 
+                                   str(self.core.bodies[biological]["FSSBodySignals"]["BodyName"]) + 
+                                   "</biologicals>"), 
+                                   prefix="")
+                if self.core.geologicals:
+                    self.print(HTML("<geologicals>Geological signatures: " + 
+                                    str(len(self.core.geologicals)) + 
+                                    " (" + 
+                                    str(len(self.core.geologicals)) + 
+                                    ")</geologicals>"), 
+                                    prefix="")
+                    for geological in self.core.geologicals:
+                        self.print(HTML("<geologicals>\t" + 
+                                        str(self.core.bodies[geological]["FSSBodySignals"]["BodyName"]) + 
+                                        "</geologicals>"), 
+                                        prefix="")
             case _: pass
 
 class BoxelSurvey(Program):
+    style = Style.from_dict({
+        "survey_color": "#ffff00",
+    })
+
     SURVEY_NAME = "BoxelSurvey"
     boxel_log_file_path: Path
     system_list_file_path: Path
     system_list: list[str]
     next_system: str
-    core_program: Program
+    core: Program
 
-    def __init__(self, core_program: Program) -> None:
+    def __init__(self, core: Program) -> None:
         super().__init__()
         self.boxel_log_file_path = self.survey_dir / Path("boxel_log")
         self.system_list_file_path = self.survey_dir / Path("boxel_survey_system_list")
-        self.core_program = core_program
-
-    def save_state(self) -> None:
-        state: dict[str, Any] = {"active":self.active}
-        json.dump(state, self.state_file_path.open("w"))
-
-    def load_state(self) -> None:
-        if self.state_file_path.exists():
-            state = json.load(self.state_file_path.open())
-            self.active = state["active"]
+        self.core = core
 
     def process_past_event(self, event: Any) -> None:
         pass
@@ -323,30 +382,217 @@ class BoxelSurvey(Program):
                     reserialize_file(self.system_list_file_path, self.system_list)
                     open(self.boxel_log_file_path, "a").write(self.next_system + "\n")
                     if not self.system_list:
-                        print("Boxel Survey Completed!")
-                        self.active = False
+                        self.print(HTML(" <survey_color>Survey Completed!</survey_color> "))
+                        self.disable()
                         self.save_state()
                         return
                     self.next_system = self.load_next_system()
                     text_to_clipboard(self.next_system)
-                    print("Next Boxel Survey System: ", self.next_system)
+                    self.print(HTML("Next system: " + self.next_system))
             case _: pass
 
     def load_next_system(self) -> str:
         return self.system_list.pop(0)
 
-class DensityColumnSurvey(Program):
-    SURVEY_NAME = "DensityColumnSurvey"
+class DW3DensityColumnSurvey(Program):
+    style = Style.from_dict({
+        "survey_color": "#ff00ff",
+    })
 
-    def __init__(self) -> None:
+    SURVEY_NAME = "DW3DensityColumnSurvey"
+    MAX_HEIGHT_DEVIATION = 10
+    survey_file_path: Path = Path("")
+    core: CoreProgram
+    system_in_sequence: int = 0
+    start_height = 0
+    direction: int = 0
+    valid_system = False
+    system_surveyed = False
+    survey_ongoing = False
+
+    def __init__(self, core: CoreProgram) -> None:
         super().__init__()
+        self.survey_file_path = Path(self.survey_dir / "default.tsv")
+        self.save_state()
+        self.core = core
+
+    def save_state(self) -> None:
+        state: dict[str, Any] = {}
+        state["active"] = self.enabled
+        state["system_in_sequence"] = self.system_in_sequence
+        state["survey_file_path"] = str(self.survey_file_path)
+        state["start_height"] = self.start_height
+        state["direction"] = self.direction
+        state["valid_system"] = self.valid_system
+        state["system_surveyed"] = self.system_surveyed
+        state["survey_ongoing"] = self.survey_ongoing
+        json.dump(state, self.state_file_path.open("w"))
+
+    def load_state(self) -> None:
+        if self.state_file_path.exists():
+            state = json.load(self.state_file_path.open())
+            self.enabled = state["active"]
+            self.survey_file_path = Path(str(state["survey_file_path"]))
+            self.system_in_sequence = state["system_in_sequence"]
+            self.start_height = state["start_height"]
+            self.direction = state["direction"]
+            self.valid_system = state["valid_system"]
+            self.system_surveyed = state["system_surveyed"]
+            self.survey_ongoing = state["survey_ongoing"]
 
     def process_event(self, event: Any) -> None:
-        match event["event"]:
-            case "FSDJump":
-                coordinates_and_system = f'{event["StarPos"][0]}\t{event["StarPos"][1]}\t{event["StarPos"][2]}\t{event["StarSystem"]}'
-                text_to_clipboard(coordinates_and_system)
-            case _: pass
+        if self.survey_ongoing:
+            match event["event"]:
+                case "FSDJump":
+                    current_height = self.core.system_coordinates[1]
+                    if abs(current_height - self.get_expected_galactic_height()) < self.MAX_HEIGHT_DEVIATION:
+                        self.valid_system = True
+                        self.print("System valid for survey!")
+                case _: pass
+        else: pass
+
+    def is_valid_starting_height(self, galactic_height: float, direction: str) -> bool:
+        return True if (abs(galactic_height - 1000) < self.MAX_HEIGHT_DEVIATION and direction == "down") or \
+                (abs(galactic_height + 1000) < self.MAX_HEIGHT_DEVIATION and direction == "up") or \
+                (abs(galactic_height) < self.MAX_HEIGHT_DEVIATION ) else False
+    
+    def get_expected_galactic_height(self) -> float:
+        return self.start_height + 50 * self.direction * self.system_in_sequence
+    
+    def process_user_input(self, arguments: list[str]) -> None:
+
+        # TODO: Refactor this mess
+
+        if len(arguments) > 1:
+            if arguments[0] in ["dcs", "dc", "column", "densitycolumn", "densitycolumnsurvey", "dw3densitycolumnsurvey"] and self.enabled:
+                galactic_height = self.core.system_coordinates[1]
+                count = 0
+                distance = 0.0
+                match arguments[1]:
+                    case "start" | "begin":
+                        if len(arguments) < 3:
+                            self.print("<error>Direction parameter required to start survey!</error>")
+                            return
+                        if arguments[2] not in ["up", "ascending", "down", "descending"]:
+                            self.print("<error>Invalid direction parameter - Must be 'up', 'ascending', 'down', or 'descending'!</error>")
+                            return
+                        if self.is_valid_starting_height(galactic_height, arguments[2]):
+                            self.direction = 1 if arguments[2] in ["up", "ascending"] else -1
+                            self.valid_system = True
+                            self.start_height = -1000 if galactic_height < -500 else 0 if galactic_height < 500 else 1000
+                            self.system_in_sequence = 0
+                            self.survey_ongoing = True
+                            self.survey_file_path = Path(self.survey_dir / str(self.core.current_system + ".tsv"))
+                            self.enable()
+                            self.save_state()
+                            self.print("<survey_color>Started Density Column Survey from system: </survey_color>" + self.core.current_system)
+                            self.print("Please make sure to enter current system's count and max distance before continuing!")
+                            return
+                        else:
+                            self.print("<error>Will not start the survey - Too far from a valid startpoint!</error>")
+                            self.print("Please move to a galactic height of -1000, 0, or 1000 +-" + str(self.MAX_HEIGHT_DEVIATION) + "Ly and try again!")
+                            return
+                        
+                    case "undo":
+                        survey = read_file_by_lines(self.survey_file_path)
+                        if len(survey) > 0:
+                            removed = survey.pop(0).split()
+                            self.print("Removed datapoint: " + removed[0])
+                        else:
+                            self.print("No datapoints to remove!")
+                            return
+                        reserialize_file(self.survey_file_path, survey)
+                        self.system_in_sequence -= 1
+                        self.system_surveyed = False
+                        self.process_event({"event":"FSDJump"})
+                        self.save_state()
+
+                    case "reset" | "clear":
+                        self.survey_file_path.unlink(missing_ok=True)
+                        self.system_in_sequence = 0
+                        self.survey_file_path = Path(self.survey_dir / "default.tsv")
+                        self.valid_system = False
+                        self.system_surveyed = False
+                        self.start_height = 0
+                        self.direction = 0
+                        self.survey_ongoing = False
+                        self.print("Cleared current survey progress.")
+                        self.save_state()
+                        return
+                    
+                    case "enable" | "disable":
+                        super().process_user_input(arguments)
+
+                    case _:
+                        if self.survey_ongoing:
+                            try:
+                                count = abs(int(arguments[1]))
+                                if count > 49:
+                                    self.print("<error>Count value cannot exceed 49!</error>\n" +
+                                    "Make sure you counted the number of neighboring systems in the nav panel correctly" +
+                                    "and make sure no FSD route is planned.")
+                                    return
+                            except ValueError:
+                                self.print("<error>Received invalid count value: </error>" + arguments[1])
+                                return
+                            if len(arguments) < 3:
+                                self.print("<error>Missing distance value!</error>")
+                                return
+                            try:
+                                distance = abs(float(arguments[2]))
+                                if distance > 20:
+                                    self.print("<error>Distance value cannot exceed 20!</error>\n" +
+                                    "Make sure you read the distance to the furthest system correctly and make sure no FSD route is planned.")
+                                    return
+                            except ValueError:
+                                self.print("<error>Received invalid distance value: </error>" + arguments[2])
+                                return
+                            self.process_datapoint(count, distance)
+                        else:
+                            self.print("No ongoing survey - Please start a survey first!")
+                            return
+            else:
+                super().process_user_input(arguments)
+                
+    def process_datapoint(self, count: int, distance: float) -> None:
+        current_height = self.core.system_coordinates[1]
+        if not self.valid_system:
+            self.print("<error>Current system is not valid for survey - Height deviation too large!</error>")
+            self.print("Current galactic height: <error>" + 
+                    str(current_height) + 
+                    "Ly</error>, expected <error>" + 
+                    str(self.get_expected_galactic_height()) + 
+                    "Ly.</error>")
+            return
+        rho: float = 50 / ((4/3) * math.pi * (distance ** 3)) if count + 1 == 50 else (count + 1) / ((4/3) * math.pi * 8000)
+        #Rho is calculated based on the direct translation of the formula in the DW3 Stellar Density Scan Worksheet spreadsheet: 
+        # =IFS(D6=50,50/((4*PI()/3)*(E6^3)),D6<50,D6/((4*pi()/3)*(20^3)))
+        datapoint = str(
+            str(self.core.current_system) + "\t" +
+            str(self.get_expected_galactic_height()) + "\t" +
+            str(count) + "\t" +
+            str(count + 1) + "\t" +
+            str(distance) + "\t" +
+            str(rho) + "\t" +
+            str(self.core.system_coordinates[0]) + "\t" +
+            str(self.core.system_coordinates[2]) + "\t" +
+            str(self.core.system_coordinates[1])
+        )
+        open(self.survey_file_path, "a").write(json.dumps(datapoint) + "\n")
+        self.print("<survey_color>Recorded datapoint for system: </survey_color>" + self.core.current_system)
+        self.print(datapoint)
+        self.system_in_sequence += 1
+        self.system_surveyed = True
+        self.valid_system = False
+        self.save_state()
+        if self.system_in_sequence == 20:
+            self.print("<survey_color>Survey completed!</survey_color>\n")
+            self.system_in_sequence = 0
+            self.system_surveyed = False
+            self.save_state()
+            return
+        
+
 
 class DensityNavRouteSurvey(Program):
     pass
