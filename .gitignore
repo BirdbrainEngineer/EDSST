@@ -10,5 +10,6 @@ wheels/
 .venv
 
 config.toml
-module_versions
-surveys/
+module_versions.json
+modules/
+!src/modules

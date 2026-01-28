@@ -1,5 +1,9 @@
 ### Elite: Dangerous Stellar Survey Tools
 
+from src.modules.boxelsurvey import BoxelSurvey
+from src.modules.fssreporter import FSSReporter
+from src.modules.core import CoreModule
+from src.modules.module import Module
 import src.version
 from pathlib import Path
 from typing import Iterator
@@ -11,7 +15,7 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 import traceback
 
-from src.program import CoreProgram, BoxelSurvey, DW3DensityColumnSurvey, Program, FSSReporter
+from src.modules.dw3densitycolumnsurvey import DW3DensityColumnSurvey
 
 # TODO: Spansh and/or EDSM integration.
 
@@ -41,44 +45,42 @@ async def listen_for_events():
                 if not line: 
                     continue
                 event = json.loads(line)
-                if event["event"] == "Shutdown":
-                    latest_journal_file_path = None
                 yield event
     else:
         latest_journal_file_path = None
 
     if latest_journal_file_path:
         print("EDSST: Synchronized to journal file - " + str(latest_journal_file_path.name))
+    else:
+        print("EDSST: Did not find journal file.  Please confirm journal directory is set correctly in the config.toml file.")
+        exit()
 
     yield {"event": "CaughtUp"}
 
-    while True:
-        if latest_journal_file_path:
-            with open(latest_journal_file_path) as file:
-                if latest_journal_file_path == initial_journal_file_path:
-                    file.read()
-                ##start listening to the logfile
-                async for changes in awatch(latest_journal_file_path, log_directory):
-                    for change, path in changes:
-                        del change
-                        if path == str(log_directory):
-                            new_latest_journal_file_path = get_latest_journal_file_path()
-                            if not new_latest_journal_file_path or latest_journal_file_path == new_latest_journal_file_path:
-                                continue
-                            else:
-                                latest_journal_file_path = new_latest_journal_file_path
-                                print("EDSST: Found a new journal log file!")
-                        elif path == str(latest_journal_file_path):
-                            for line in file.read().strip().split("\n"):
-                                if not line: 
-                                    continue
-                                event = json.loads(line)
-                                if event["event"] == "Shutdown":
-                                    break
-                                yield event
-        print("EDSST: Elite: Dangerous not running. Waiting for new journal log file.")
+    with open(latest_journal_file_path) as file:
+        if latest_journal_file_path == initial_journal_file_path:
+            file.read()
+        ##start listening to the logfile
+        async for changes in awatch(latest_journal_file_path, log_directory):
+            for change, path in changes:
+                del change
+                if path == str(log_directory):
+                    new_latest_journal_file_path = get_latest_journal_file_path()
+                    if not new_latest_journal_file_path or latest_journal_file_path == new_latest_journal_file_path:
+                        continue
+                    else:
+                        latest_journal_file_path = new_latest_journal_file_path
+                        print("EDSST: Found a new journal log file!")
+                elif path == str(latest_journal_file_path):
+                    for line in file.read().strip().split("\n"):
+                        if not line: 
+                            continue
+                        event = json.loads(line)
+                        if event["event"] == "Shutdown":
+                            break
+                        yield event
 
-async def event_loop(modules: list[Program], tg: asyncio.TaskGroup):
+async def event_loop(modules: list[Module], tg: asyncio.TaskGroup):
     async for event in listen_for_events():
         for module in modules:
             if module.state.enabled or not module.caught_up:
@@ -88,7 +90,7 @@ async def event_loop(modules: list[Program], tg: asyncio.TaskGroup):
                     module.state.enabled = False
                     print(traceback.format_exc())
 
-async def input_loop(modules: list[Program], event_loop_task: asyncio.Task, tg: asyncio.TaskGroup) -> None: # pyright: ignore[reportUnknownParameterType, reportMissingTypeArgument]
+async def input_loop(modules: list[Module], event_loop_task: asyncio.Task, tg: asyncio.TaskGroup) -> None: # pyright: ignore[reportUnknownParameterType, reportMissingTypeArgument]
     session = PromptSession() # pyright: ignore[reportUnknownVariableType]
     while True:
         with patch_stdout():
@@ -103,12 +105,12 @@ async def input_loop(modules: list[Program], event_loop_task: asyncio.Task, tg: 
 
 async def main():
 
-    print("\nElite: Dangerous Stellar Survey Tools " + src.version.ESST_VERSION + " booting...\n")
+    print("\nElite: Dangerous Stellar Survey Tools " + src.version.EDSST_VERSION + " booting...\n")
 
     #TODO: Make loading of modules dynamic
 
-    modules: list[Program] = []
-    core_module = CoreProgram()
+    modules: list[Module] = []
+    core_module = CoreModule()
     modules.append(core_module)
     modules.append(FSSReporter(core_module))
     modules.append(BoxelSurvey(core_module))
