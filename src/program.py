@@ -1,7 +1,7 @@
 from enum import Enum, auto
 from typing import Any
 from pathlib import Path
-from src.util import text_to_clipboard, get_distance, reserialize_file, read_file_by_lines
+from src.util import text_to_clipboard, get_distance, reserialize_file, read_file_by_lines, abbreviate_planet_type
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.styles import Style
@@ -9,6 +9,7 @@ from src.version import MODULE_VERSIONS_PATH
 import msgspec
 import math
 import json
+import asyncio
 
 # TODO: rename "program into module"
 # TODO: separate each module into their own file
@@ -136,11 +137,11 @@ class Program():
         if self.state_file_path.exists():
             self.state = msgspec.json.decode(self.state_file_path.read_bytes(), type = ModuleState)
 
-    def process_event(self, event: Any) -> None:
+    async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:
         if event["event"] == "CaughtUp":
             self.caught_up = True
 
-    def process_user_input(self, arguments: list[str]) -> None:
+    async def process_user_input(self, arguments: list[str], tg: asyncio.TaskGroup) -> None:
         if len(arguments) == 0:
             return
         elif arguments[0].lower() == self.SURVEY_NAME.lower():
@@ -154,18 +155,23 @@ class Program():
                     self.disable()
                 case _: self.print("<warning>Received unknown command - </warning>" + arguments[1])
 
-    def print(self, *values: str, sep: str | None = " ", end: str | None = "\n", prefix: str | None = None) -> None:
+    def print(self, *values: str, sep: str = " ", end: str = "\n", prefix: str | None = None) -> None:
         if not self.caught_up: return
-        html_values = map(HTML, values)
-        if prefix is not None:
-            print_formatted_text(prefix, *html_values, sep=sep, end=end, style=self.style) # pyright: ignore[reportArgumentType]
-        else:
-            print_formatted_text(HTML(f"<survey_color>{self.SURVEY_NAME}</survey_color>:"), *html_values, sep=sep, end=end, style=self.style) # pyright: ignore[reportArgumentType]
+        html = sep.join(values)
+        prefix = prefix if prefix != None else f"<survey_color>{self.SURVEY_NAME}</survey_color>:"
+        if prefix:
+            html = prefix + html
+        print_formatted_text(HTML(html), sep=sep, end=end, style=self.style)
 
 class BodyAttribute(Enum):
     first_discovery = auto()
+    first_discovery_cluster = auto()
+    first_discovery_star = auto()
+    first_discovery_planet = auto()
     first_possible_map = auto()
+    first_possible_map_planet = auto()
     first_possible_footfall = auto()
+    first_possible_footfall_planet = auto()
     first_map = auto()
     first_footfall = auto()
     automatic_scan = auto()
@@ -175,6 +181,7 @@ class BodyAttribute(Enum):
     saa_signal = auto()
     cluster = auto()
     star = auto()
+    planet = auto()
     icy_body = auto()
     rocky_icy_body = auto()
     rocky_body = auto()
@@ -195,7 +202,7 @@ class BodyAttribute(Enum):
     thargoids = auto()
 
 class Bodies(msgspec.Struct):
-    bodies: dict[int, dict[str, Any]] = msgspec.field(default_factory=dict)
+    bodies: dict[int, dict[str, Any]] = msgspec.field(default_factory=dict) # pyright: ignore[reportUnknownVariableType]
     bodies_by_attribute: dict[BodyAttribute, set[int]] = msgspec.field(default_factory=lambda: {attribute: set() for attribute in BodyAttribute})
 
     def get_bodies_by_attribute(self, *args: BodyAttribute, sorted: bool = False):
@@ -269,7 +276,7 @@ class CoreProgram(Program):
         if self.state_file_path.exists():
             self.state = msgspec.json.decode(self.state_file_path.read_bytes(), type = CoreProgramState) # pyright: ignore[reportIncompatibleVariableOverride]
 
-    def process_user_input(self, arguments: list[str]) -> None:
+    async def process_user_input(self, arguments: list[str], tg: asyncio.TaskGroup) -> None:
         if arguments[0] in ["core", "main", "base", "edsst"]:
             match arguments[1]:
                 case "eventstream":
@@ -290,10 +297,10 @@ class CoreProgram(Program):
                                 self.save_state()
                                 self.print("Event Stream is no longer displayed.")
                         case _: pass
-                case _: super().process_user_input(arguments)
+                case _: await super().process_user_input(arguments, tg)
 
-    def process_event(self, event: Any) -> None:
-        super().process_event(event)
+    async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:
+        await super().process_event(event, tg)
         if self.state.event_stream_enabled: self.print(event["event"])
         bodyID = -1
         if "BodyID" in event: bodyID = int(event["BodyID"])
@@ -305,22 +312,33 @@ class CoreProgram(Program):
                     self.commander_name = str(name)
                     self.commander_greeted = True
             case "Scan":
+                is_star = True if "StarType" in event else False
+                is_cluster = True if "Cluster" in str(event["BodyName"]) else False
                 self.state.current_system.bodies.add_body_signal(event)
-                if event["WasDiscovered"] == False:         self.state.current_system.bodies.record_attribute(BodyAttribute.first_discovery, bodyID)
-                if event["WasMapped"] == False:             self.state.current_system.bodies.record_attribute(BodyAttribute.first_possible_map, bodyID)
-                if event["WasFootfalled"] == False:         self.state.current_system.bodies.record_attribute(BodyAttribute.first_possible_footfall, bodyID)
-                if "Cluster" in str(event["BodyName"]).removeprefix(self.state.current_system.name): 
-                                                            self.state.current_system.bodies.record_attribute(BodyAttribute.cluster, bodyID)
+                if event["WasDiscovered"] == False:         
+                    self.state.current_system.bodies.record_attribute(BodyAttribute.first_discovery, bodyID)
+                    if is_cluster:                          self.state.current_system.bodies.record_attribute(BodyAttribute.first_discovery_cluster, bodyID)
+                    else:
+                        if is_star:                         self.state.current_system.bodies.record_attribute(BodyAttribute.first_discovery_star, bodyID)
+                        else:                               self.state.current_system.bodies.record_attribute(BodyAttribute.first_discovery_planet, bodyID)
+                if event["WasMapped"] == False:             
+                    self.state.current_system.bodies.record_attribute(BodyAttribute.first_possible_map, bodyID)
+                    if not is_cluster and not is_star:
+                        self.state.current_system.bodies.record_attribute(BodyAttribute.first_possible_map_planet, bodyID)
+                if event["WasFootfalled"] == False:         
+                    self.state.current_system.bodies.record_attribute(BodyAttribute.first_possible_footfall, bodyID)
+                    if not is_cluster and not is_star:
+                        self.state.current_system.bodies.record_attribute(BodyAttribute.first_possible_footfall_planet, bodyID)
+                if is_cluster:                              self.state.current_system.bodies.record_attribute(BodyAttribute.cluster, bodyID)
                 else:
                     if "Rings" in event:                    self.state.current_system.bodies.record_attribute(BodyAttribute.ringed, bodyID)
-                    if "StarType" in event:             
-                        self.state.current_system.bodies.record_attribute(BodyAttribute.star, bodyID)
+                    if is_star:                             self.state.current_system.bodies.record_attribute(BodyAttribute.star, bodyID)
                     else:
                         if event["TerraformState"]:         self.state.current_system.bodies.record_attribute(BodyAttribute.terraformable, bodyID)
                         if event["Volcanism"]:              self.state.current_system.bodies.record_attribute(BodyAttribute.volcanic, bodyID)
                         if event["Landable"]:               self.state.current_system.bodies.record_attribute(BodyAttribute.landable, bodyID)
                         if "AtmosphereType" in event:
-                            if event["AtmosphereType"]!="None": 
+                            if event["AtmosphereType"] != "None": 
                                                             self.state.current_system.bodies.record_attribute(BodyAttribute.atmospheric, bodyID)
                         match event["PlanetClass"]:
                             case "Icy body":                self.state.current_system.bodies.record_attribute(BodyAttribute.icy_body, bodyID)
@@ -328,10 +346,11 @@ class CoreProgram(Program):
                             case "Rocky body":              self.state.current_system.bodies.record_attribute(BodyAttribute.rocky_body, bodyID)
                             case "Metal rich body":         self.state.current_system.bodies.record_attribute(BodyAttribute.metal_rich_body, bodyID)
                             case "High metal content body": self.state.current_system.bodies.record_attribute(BodyAttribute.high_metal_content_body, bodyID)
-                            case "Earth-like world":        self.state.current_system.bodies.record_attribute(BodyAttribute.earth_like_world_body, bodyID)
+                            case "Earthlike body":        self.state.current_system.bodies.record_attribute(BodyAttribute.earth_like_world_body, bodyID)
                             case "Ammonia world":           self.state.current_system.bodies.record_attribute(BodyAttribute.ammonia_world_body, bodyID)
                             case "Water world":             self.state.current_system.bodies.record_attribute(BodyAttribute.water_world_body, bodyID)
                             case _:                         self.state.current_system.bodies.record_attribute(BodyAttribute.gas_giant_body, bodyID)
+                        self.state.current_system.bodies.record_attribute(BodyAttribute.planet, bodyID)
                 self.save_state()
 
             case "FSSBodySignals":
@@ -349,12 +368,15 @@ class CoreProgram(Program):
                 self.state.current_system.bodies.add_body_signal(event)
                 self.state.current_system.bodies.record_attribute(BodyAttribute.saa_scan, bodyID)
                 self.save_state()
+
             case "SAASignalsFound":
                 self.state.current_system.bodies.add_body_signal(event)
                 self.state.current_system.bodies.record_attribute(BodyAttribute.saa_signal, bodyID)
                 self.save_state()
+
             case "FSDJump":
-                self.state.previous_system.coordinates = self.state.current_system.coordinates
+                self.state.previous_system = self.state.current_system
+                self.state.current_system = StarSystem()
                 self.state.current_system.name = event["StarSystem"]
                 self.state.current_system.coordinates = (event["StarPos"][0], event["StarPos"][1], event["StarPos"][2])
                 self.state.current_system.address = event["SystemAddress"]
@@ -374,46 +396,71 @@ class FSSReporter(Program):
     SURVEY_NAME = "FSSReporter"
     SURVEY_VERSION: str = "0.0.1"
     core: CoreProgram
+    report_scheduled = False
 
     def __init__(self, core: CoreProgram) -> None:
         super().__init__()
         self.core = core
 
-    def process_event(self, event: Any) -> None:
-        super().process_event(event)
+    async def process_report(self, event: Any, delay: float):
+        await asyncio.sleep(delay)
+        system_name = self.core.state.current_system.name
+        self.print( "╔═══════════════════════════════════════════════════════════════════════════════════</survey_color>", prefix="\n<survey_color>  ")
+        self.print(f"║\tFull system scan of {self.core.state.current_system.name} complete!</survey_color>", prefix="<survey_color>  ")
+        self.print( "╠═══════════════════════════════════════════════════════════════════════════════════</survey_color>", prefix="<survey_color>  ")
+        self.print(f"║  Total stars:\t{len(self.core.state.current_system.bodies.get_bodies_by_attribute(BodyAttribute.star))}</survey_color>", prefix="<survey_color>  ")
+        self.print(f"║  Total planets:\t{len(self.core.state.current_system.bodies.get_bodies_by_attribute(BodyAttribute.planet))}</survey_color>", prefix="<survey_color>  ")
+        self.print(f"║  First discoveries:\t{len(self.core.state.current_system.bodies.get_bodies_by_attribute(BodyAttribute.first_discovery_star, BodyAttribute.first_discovery_planet))}</survey_color>", prefix="<survey_color>  ")
+        bodies = self.core.state.current_system.bodies
+        valuables = bodies.get_bodies_by_attribute(BodyAttribute.terraformable, BodyAttribute.earth_like_world_body, BodyAttribute.water_world_body, BodyAttribute.ammonia_world_body, sorted = True)
+        if len(valuables) > 0:
+            self.print("<survey_color>  ╠══</survey_color>", prefix="")
+            self.print(f"  Valuable planets: {len(valuables)}</valuable>", prefix="<valuable>  ║")
+            for planet in valuables:
+                self.print(f"{planet["BodyName"].removeprefix(system_name)}\t\t({abbreviate_planet_type(planet["PlanetClass"])}{" + Terraformable" if planet["TerraformState"] == "Terraformable" else ""})</valuable>", prefix="<valuable>  ║\t")
+           
+        biologicals = bodies.get_bodies_by_attribute(BodyAttribute.bios, sorted = True)
+        total_bio_count = 0
+        bio_count: list[int] = []
+        for bio in biologicals:
+            bios = 0
+            for signal in bio["Signals"]:
+                bios: int = int(signal["Count"]) if signal["Type"] == "$SAA_SignalType_Biological;" else bios
+            total_bio_count += bios
+            bio_count.append(bios)
+        if total_bio_count > 0:
+            self.print("<survey_color>  ╠══</survey_color>", prefix="")
+            self.print(f"  Biological signatures: {len(biologicals)} / {total_bio_count}</biological>", prefix="<biological>  ║")
+            for i, planet in enumerate(biologicals):
+                self.print(f"{planet["BodyName"].removeprefix(system_name)}\t\t({bio_count[i]})\tType: {abbreviate_planet_type(planet["PlanetClass"])}\tTemp: ~{int(planet["SurfaceTemperature"])}K\tAtm: {planet["AtmosphereType"]}</biological>", prefix="<biological>  ║\t")
+
+        geologicals = bodies.get_bodies_by_attribute(BodyAttribute.geos, sorted = True)
+        total_geo_count = 0
+        geo_count: list[int] = []
+        for geo in geologicals: 
+            geos = 0
+            for signal in geo["Signals"]:
+                geos: int = int(signal["Count"]) if signal["Type"] == "$SAA_SignalType_Geological;" else geos
+            total_geo_count += geos
+            geo_count.append(geos)
+        if total_geo_count > 0:
+            self.print("<survey_color>  ╠══</survey_color>", prefix="")
+            self.print(f"  Geological signatures: {len(geologicals)} / {total_geo_count}</geological>", prefix="<geological>  ║")
+            for i, planet in enumerate(geologicals):
+                self.print(f"{planet["BodyName"].removeprefix(system_name)}\t\t({geo_count[i]})\tVolcanism type: {planet["Volcanism"]}</geological>", prefix="<geological>  ║\t")
+        
+        self.print("<survey_color>  ╚═══════════════════════════════════════════════════════════════════════════════════</survey_color>\n", prefix="")
+
+    async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:
+        await super().process_event(event, tg)
         match event["event"]:
             case "FSSAllBodiesFound":
-                system_name = self.core.state.current_system.name
-                self.print("\n<survey_color>Full system scan of " + self.core.state.current_system.name + " complete!</survey_color>\n", prefix="")
-                bodies = self.core.state.current_system.bodies
-                valuables = bodies.get_bodies_by_attribute(BodyAttribute.terraformable, BodyAttribute.earth_like_world_body, BodyAttribute.water_world_body, BodyAttribute.ammonia_world_body, sorted = True)
-                self.print("<valuable>Valuable planets: " + str(len(valuables)) + "</valuable>")
-                for planet in valuables:
-                    self.print(f"\t<valuable>Planet: {planet["BodyName"].removeprefix(system_name)} - ({planet["PlanetClass"]}{" + Terraformable" if planet["TerraformState"] == "Terraformable" else ""})</valuable>", prefix="")
-                    
-                biologicals = bodies.get_bodies_by_attribute(BodyAttribute.bios, sorted = True)
-                total_bio_count = 0
-                bio_count: list[int] = []
-                for bio in biologicals: 
-                    for signal in bio["Signals"]:
-                        bios: int = int(signal["Count"]) if signal["Type"] == "$SAA_SignalType_Biological;" else 0
-                        total_bio_count += bios
-                        bio_count.append(bios)
-                self.print(f"\n<biological>Biological signatures: {len(biologicals)} / {total_bio_count}</biological>", prefix="")
-                for i, planet in enumerate(biologicals):
-                    self.print(f"\t<biological>Planet: {planet["BodyName"].removeprefix(system_name)} - ({bio_count[i]})</biological>", prefix="")
-
-                geologicals = bodies.get_bodies_by_attribute(BodyAttribute.geos, sorted = True)
-                total_geo_count = 0
-                geo_count: list[int] = []
-                for geo in geologicals: 
-                    for signal in geo["Signals"]:
-                        geos: int = int(signal["Count"]) if signal["Type"] == "$SAA_SignalType_Geological;" else 0
-                        total_geo_count += geos
-                        geo_count.append(geos)
-                self.print(f"\n<geological>Biological signatures: {len(geologicals)} / {total_geo_count}</geological>", prefix="")
-                for i, planet in enumerate(geologicals):
-                    self.print(f"\t<geological>Planet: {planet["BodyName"].removeprefix(system_name)} - ({geo_count[i]})</geological>", prefix="")
+                if not self.report_scheduled:
+                    self.report_scheduled = True
+                    task = tg.create_task(self.process_report(event, 1))
+                    if not self.caught_up: task.cancel()
+            case "FSDJump":
+                self.report_scheduled = False
             case _: pass
 
 class BoxelSurvey(Program):
@@ -435,8 +482,8 @@ class BoxelSurvey(Program):
         self.system_list_file_path = self.survey_dir / Path("boxel_survey_system_list")
         self.core = core
     
-    def process_event(self, event: Any) -> None:
-        super().process_event(event)
+    async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:
+        await super().process_event(event, tg)
         match event["event"]:
             case "FSDJump":
                 if self.next_system.lower() == event["StarSystem"].lower():
@@ -511,8 +558,8 @@ class DW3DensityColumnSurvey(Program):
             self.system_surveyed = state["system_surveyed"]
             self.survey_ongoing = state["survey_ongoing"]
 
-    def process_event(self, event: Any) -> None:
-        super().process_event(event)
+    async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:
+        await super().process_event(event, tg)
         if self.survey_ongoing:
             match event["event"]:
                 case "FSDJump":
@@ -531,7 +578,7 @@ class DW3DensityColumnSurvey(Program):
     def get_expected_galactic_height(self) -> float:
         return self.start_height + 50 * self.direction * self.system_in_sequence
     
-    def process_user_input(self, arguments: list[str]) -> None:
+    async def process_user_input(self, arguments: list[str], tg: asyncio.TaskGroup) -> None:
 
         # TODO: Refactor this mess
 
@@ -576,7 +623,7 @@ class DW3DensityColumnSurvey(Program):
                         reserialize_file(self.survey_file_path, survey)
                         self.system_in_sequence -= 1
                         self.system_surveyed = False
-                        self.process_event({"event":"FSDJump"})
+                        await self.process_event({"event":"FSDJump"}, tg)
                         self.save_state()
 
                     case "reset" | "clear":
@@ -593,7 +640,7 @@ class DW3DensityColumnSurvey(Program):
                         return
                     
                     case "enable" | "disable":
-                        super().process_user_input(arguments)
+                        await super().process_user_input(arguments, tg)
 
                     case _:
                         if self.survey_ongoing:
@@ -624,7 +671,7 @@ class DW3DensityColumnSurvey(Program):
                             self.print("No ongoing survey - Please start a survey first!")
                             return
             else:
-                super().process_user_input(arguments)
+                await super().process_user_input(arguments, tg)
                 
     def process_datapoint(self, count: int, distance: float) -> None:
         current_height = self.core.state.current_system.coordinates[1]

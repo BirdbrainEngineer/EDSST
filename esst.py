@@ -9,6 +9,7 @@ import json
 import asyncio
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
+import traceback
 
 from src.program import CoreProgram, BoxelSurvey, DW3DensityColumnSurvey, Program, FSSReporter
 
@@ -19,7 +20,6 @@ config = toml.load("config.toml")
 log_directory = Path(config["elite_dangerous_journal_path"])
 
 def get_latest_journal_file_path() -> None | Path:
-    print(log_directory)
     log_paths: Iterator[Path] = log_directory.glob("Journal.*.log")
 
     latest_journal_file_path: Path | None = None
@@ -76,17 +76,19 @@ async def listen_for_events():
                                 if event["event"] == "Shutdown":
                                     break
                                 yield event
-                    
-        
         print("EDSST: Elite: Dangerous not running. Waiting for new journal log file.")
 
-async def event_loop(modules: list[Program]):
+async def event_loop(modules: list[Program], tg: asyncio.TaskGroup):
     async for event in listen_for_events():
         for module in modules:
             if module.state.enabled or not module.caught_up:
-                module.process_event(event)
+                try:
+                    await module.process_event(event, tg)
+                except Exception:
+                    module.state.enabled = False
+                    print(traceback.format_exc())
 
-async def input_loop(modules: list[Program], event_loop_task: asyncio.Task) -> None: # pyright: ignore[reportUnknownParameterType, reportMissingTypeArgument]
+async def input_loop(modules: list[Program], event_loop_task: asyncio.Task, tg: asyncio.TaskGroup) -> None: # pyright: ignore[reportUnknownParameterType, reportMissingTypeArgument]
     session = PromptSession() # pyright: ignore[reportUnknownVariableType]
     while True:
         with patch_stdout():
@@ -97,7 +99,7 @@ async def input_loop(modules: list[Program], event_loop_task: asyncio.Task) -> N
         arguments = str(result).lower().split() # pyright: ignore[reportUnknownArgumentType]
         if len(arguments) > 0:
             for module in modules:
-                module.process_user_input(arguments) 
+                await module.process_user_input(arguments, tg) 
 
 async def main():
 
@@ -116,8 +118,8 @@ async def main():
     
 
     async with asyncio.TaskGroup() as tg:
-        event_loop_task = tg.create_task(event_loop(modules))
-        input_loop_task = tg.create_task(input_loop(modules, event_loop_task)) # pyright: ignore[reportUnusedVariable]
+        event_loop_task = tg.create_task(event_loop(modules, tg))
+        input_loop_task = tg.create_task(input_loop(modules, event_loop_task, tg)) # pyright: ignore[reportUnusedVariable]
         print("\n╔════════════════════════════════════════════════════════════╗\n" +
                 "║ Elite: Dangerous Stellar Survey Tools successfully booted! ║\n" +
                 "╚════════════════════════════════════════════════════════════╝\n")
