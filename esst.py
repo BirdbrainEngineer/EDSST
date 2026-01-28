@@ -81,7 +81,7 @@ async def listen_for_events():
 async def event_loop(modules: list[Program]):
     async for event in listen_for_events():
         for module in modules:
-            if module.state.enabled:
+            if module.state.enabled or not module.caught_up:
                 module.process_event(event)
 
 async def input_loop(modules: list[Program], event_loop_task: asyncio.Task) -> None: # pyright: ignore[reportUnknownParameterType, reportMissingTypeArgument]
@@ -93,7 +93,7 @@ async def input_loop(modules: list[Program], event_loop_task: asyncio.Task) -> N
                 event_loop_task.cancel()
                 return
         arguments = str(result).lower().split() # pyright: ignore[reportUnknownArgumentType]
-        if len(arguments) > 2:
+        if len(arguments) > 0:
             for module in modules:
                 module.process_user_input(arguments) 
 

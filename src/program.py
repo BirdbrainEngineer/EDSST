@@ -235,6 +235,7 @@ class StarSystem(msgspec.Struct):
     bodies: Bodies = msgspec.field(default_factory=lambda: Bodies())
 
 class CoreProgramState(ModuleState):
+    enabled: bool = True
     event_stream_enabled: bool = False
     current_system: StarSystem = msgspec.field(default_factory=StarSystem)
     previous_system: StarSystem = msgspec.field(default_factory=StarSystem)
@@ -275,27 +276,25 @@ class CoreProgram(Program):
                     if len(arguments) < 3: pass
                     match arguments[2]:
                         case "enable" | "on":
-                            if self.event_stream_enabled: 
+                            if self.state.event_stream_enabled: 
                                 self.print("<yellow>Display of Event Stream already enabled!</yellow>")
                             else:
-                                self.event_stream_enabled = True
+                                self.state.event_stream_enabled = True
                                 self.save_state()
                                 self.print("Event Stream is now displayed.")
                         case "disable" | "off":
-                            if not self.event_stream_enabled: 
+                            if not self.state.event_stream_enabled: 
                                 self.print("<yellow>Display of Event Stream already disabled!</yellow>")
                             else:
-                                self.event_stream_enabled = False
+                                self.state.event_stream_enabled = False
                                 self.save_state()
                                 self.print("Event Stream is no longer displayed.")
                         case _: pass
-                case _: pass
-        else:
-            super().process_user_input(arguments)
+                case _: super().process_user_input(arguments)
 
     def process_event(self, event: Any) -> None:
         super().process_event(event)
-        if self.event_stream_enabled: self.print(event["event"])
+        if self.state.event_stream_enabled: self.print(event["event"])
         bodyID = -1
         if "BodyID" in event: bodyID = int(event["BodyID"])
         match event["event"]:
@@ -359,6 +358,7 @@ class CoreProgram(Program):
 
                 self.save_state()
             case "FSDJump":
+                # TODO: Check if this code actually clears stuff I dont think so
                 self.state.previous_system.coordinates = self.state.current_system.coordinates
                 self.state.current_system.name = event["StarSystem"]
                 self.state.current_system.coordinates = (event["StarPos"][0], event["StarPos"][1], event["StarPos"][2])
@@ -408,9 +408,9 @@ class FSSReporter(Program):
                         bios: int = int(signal["Count"]) if signal["Type"] == "$SAA_SignalType_Biological;" else 0
                         total_bio_count += bios
                         bio_count.append(bios)
-                self.print(f"\n<biological>Biological signatures: {len(biologicals)} / {bio_count}</biological>" )
+                self.print(f"\n<biological>Biological signatures: {len(biologicals)} / {total_bio_count)}</biological>" )
                 for i, planet in enumerate(biologicals):
-                    self.print(f"\t<biological>{planet["BodyName"].removeprefix(system_name)} - ({bio_count[i]})</biological>")
+                    self.print(f"\t<biological>{str(planet["BodyName"]).removeprefix(system_name)} - ({bio_count[i]})</biological>")
 
                 geologicals = bodies.get_bodies_by_attribute(BodyAttribute.bios, sorted = True)
                 total_geo_count = 0
@@ -420,9 +420,11 @@ class FSSReporter(Program):
                         geos: int = int(signal["Count"]) if signal["Type"] == "$SAA_SignalType_Geological;" else 0
                         total_geo_count += geos
                         geo_count.append(geos)
-                self.print(f"\n<geological>Biological signatures: {len(geologicals)} / {geo_count}</geological>" )
+                self.print(f"\n<geological>Biological signatures: {len(geologicals)} / {total_geo_count}</geological>" )
                 for i, planet in enumerate(geologicals):
-                    self.print(f"\t<geological>{planet["BodyName"].removeprefix(system_name)} - ({geo_count[i]})</geological>")
+                    self.print(f"\t<geological>{str(planet["BodyName"]).removeprefix(system_name)} - ({geo_count[i]})</geological>")
+            case "FSDJump":
+                # TODO: reset the system
             case _: pass
 
 class BoxelSurvey(Program):
@@ -435,7 +437,7 @@ class BoxelSurvey(Program):
     boxel_log_file_path: Path
     system_list_file_path: Path
     system_list: list[str]
-    next_system: str
+    next_system: str = ""
     core: Program
 
     def __init__(self, core: Program) -> None:
