@@ -1,15 +1,18 @@
 from pathlib import Path
 from math import sqrt
 import subprocess
+import pyperclip
 import toml
 
 config = toml.load("config.toml")
 
-WL_COPY_BIN_PATH = Path(config["wl_copy_bin_path"])
+WL_COPY_BIN_PATH: None | Path = Path(config["wl_copy_bin_path"]) if "wl_copy_bin_path" in config else None
 
 def text_to_clipboard(text: str) -> None:
-    ##print("text: ", text) ##uncomment for simple debugging
-    subprocess.check_call([WL_COPY_BIN_PATH, "--", text])
+    if WL_COPY_BIN_PATH is not None:
+        subprocess.check_call([WL_COPY_BIN_PATH, "--", text])
+    else:
+        pyperclip.copy(text)
 
 
 def read_file_by_lines(file: Path) -> list[str]:

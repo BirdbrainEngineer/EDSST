@@ -57,28 +57,29 @@ async def listen_for_events():
 
     yield {"event": "CaughtUp"}
 
-    with open(latest_journal_file_path) as file:
-        if latest_journal_file_path == initial_journal_file_path:
-            file.read()
-        ##start listening to the logfile
-        async for changes in awatch(latest_journal_file_path, log_directory):
-            for change, path in changes:
-                del change
-                if path == str(log_directory):
-                    new_latest_journal_file_path = get_latest_journal_file_path()
-                    if not new_latest_journal_file_path or latest_journal_file_path == new_latest_journal_file_path:
+    file = open(latest_journal_file_path)
+
+    if latest_journal_file_path == initial_journal_file_path:
+        file.read()
+    ##start listening to the logfile
+    async for changes in awatch(latest_journal_file_path, log_directory):
+        for change, path in changes:
+            del change
+            if path == str(latest_journal_file_path):
+                for line in file.read().strip().split("\n"):
+                    if not line: 
                         continue
-                    else:
-                        latest_journal_file_path = new_latest_journal_file_path
-                        print("EDSST: Found a new journal log file!")
-                elif path == str(latest_journal_file_path):
-                    for line in file.read().strip().split("\n"):
-                        if not line: 
-                            continue
-                        event = json.loads(line)
-                        if event["event"] == "Shutdown":
-                            break
-                        yield event
+                    event = json.loads(line)
+                    if event["event"] == "Shutdown":
+                        print("EDSST: Detected shutdown.")
+                    yield event
+            else:
+                new_latest_journal_file_path = get_latest_journal_file_path()
+                if new_latest_journal_file_path and latest_journal_file_path != new_latest_journal_file_path:
+                    print(f"EDSST: Synchronized to journal log file: {new_latest_journal_file_path}")
+                    latest_journal_file_path = new_latest_journal_file_path
+                    file.close()
+                    file = open(latest_journal_file_path)
 
 async def event_loop(modules: list[Module], tg: asyncio.TaskGroup):
     async for event in listen_for_events():
