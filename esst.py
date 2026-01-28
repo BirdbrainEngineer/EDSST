@@ -19,6 +19,7 @@ config = toml.load("config.toml")
 log_directory = Path(config["elite_dangerous_journal_path"])
 
 def get_latest_journal_file_path() -> None | Path:
+    print(log_directory)
     log_paths: Iterator[Path] = log_directory.glob("Journal.*.log")
 
     latest_journal_file_path: Path | None = None
@@ -57,26 +58,27 @@ async def listen_for_events():
                 if latest_journal_file_path == initial_journal_file_path:
                     file.read()
                 ##start listening to the logfile
-                async for changes in awatch(latest_journal_file_path):
-                    del changes
-                    for line in file.read().strip().split("\n"):
-                        if not line: 
-                            continue
-                        event = json.loads(line)
-                        if event["event"] == "Shutdown":
-                            break
-                        yield event
+                async for changes in awatch(latest_journal_file_path, log_directory):
+                    for change, path in changes:
+                        del change
+                        if path == str(log_directory):
+                            new_latest_journal_file_path = get_latest_journal_file_path()
+                            if not new_latest_journal_file_path or latest_journal_file_path == new_latest_journal_file_path:
+                                continue
+                            else:
+                                latest_journal_file_path = new_latest_journal_file_path
+                                print("EDSST: Found a new journal log file!")
+                        elif path == str(latest_journal_file_path):
+                            for line in file.read().strip().split("\n"):
+                                if not line: 
+                                    continue
+                                event = json.loads(line)
+                                if event["event"] == "Shutdown":
+                                    break
+                                yield event
+                    
         
         print("EDSST: Elite: Dangerous not running. Waiting for new journal log file.")
-        # Wait for new log to be created
-        async for log_directory_changes in awatch(log_directory):
-            del log_directory_changes
-            new_latest_journal_file_path = get_latest_journal_file_path()
-            if not new_latest_journal_file_path or latest_journal_file_path == new_latest_journal_file_path:
-                continue
-            else:
-                latest_journal_file_path = new_latest_journal_file_path
-                print("EDSST: Found new journal log file.")
 
 async def event_loop(modules: list[Program]):
     async for event in listen_for_events():

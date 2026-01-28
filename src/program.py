@@ -353,12 +353,7 @@ class CoreProgram(Program):
                 self.state.current_system.bodies.add_body_signal(event)
                 self.state.current_system.bodies.record_attribute(BodyAttribute.saa_signal, bodyID)
                 self.save_state()
-            case "StartJump":
-                #set current system to previous and initialize new system
-
-                self.save_state()
             case "FSDJump":
-                # TODO: Check if this code actually clears stuff I dont think so
                 self.state.previous_system.coordinates = self.state.current_system.coordinates
                 self.state.current_system.name = event["StarSystem"]
                 self.state.current_system.coordinates = (event["StarPos"][0], event["StarPos"][1], event["StarPos"][2])
@@ -389,16 +384,12 @@ class FSSReporter(Program):
         match event["event"]:
             case "FSSAllBodiesFound":
                 system_name = self.core.state.current_system.name
-                self.print("<survey_color>\nFull system scan of " + self.core.state.current_system.name + " complete!</survey_color>\n")
+                self.print("\n<survey_color>Full system scan of " + self.core.state.current_system.name + " complete!</survey_color>\n", prefix="")
                 bodies = self.core.state.current_system.bodies
                 valuables = bodies.get_bodies_by_attribute(BodyAttribute.terraformable, BodyAttribute.earth_like_world_body, BodyAttribute.water_world_body, BodyAttribute.ammonia_world_body, sorted = True)
                 self.print("<valuable>Valuable planets: " + str(len(valuables)) + "</valuable>")
                 for planet in valuables:
-                    self.print("\t<valuable>" + 
-                               str(planet["BodyName"]).removeprefix(system_name) + 
-                               " - (" 
-                               + str(planet["PlanetClass"]) + 
-                               " + Terraformable)</valuable>" if planet["TerraformState"] == "Terraformable" else ")</valuable>")
+                    self.print(f"\t<valuable>Planet: {planet["BodyName"].removeprefix(system_name)} - ({planet["PlanetClass"]}{" + Terraformable" if planet["TerraformState"] == "Terraformable" else ""})</valuable>", prefix="")
                     
                 biologicals = bodies.get_bodies_by_attribute(BodyAttribute.bios, sorted = True)
                 total_bio_count = 0
@@ -408,11 +399,11 @@ class FSSReporter(Program):
                         bios: int = int(signal["Count"]) if signal["Type"] == "$SAA_SignalType_Biological;" else 0
                         total_bio_count += bios
                         bio_count.append(bios)
-                self.print(f"\n<biological>Biological signatures: {len(biologicals)} / {total_bio_count)}</biological>" )
+                self.print(f"\n<biological>Biological signatures: {len(biologicals)} / {total_bio_count}</biological>", prefix="")
                 for i, planet in enumerate(biologicals):
-                    self.print(f"\t<biological>{str(planet["BodyName"]).removeprefix(system_name)} - ({bio_count[i]})</biological>")
+                    self.print(f"\t<biological>Planet: {planet["BodyName"].removeprefix(system_name)} - ({bio_count[i]})</biological>", prefix="")
 
-                geologicals = bodies.get_bodies_by_attribute(BodyAttribute.bios, sorted = True)
+                geologicals = bodies.get_bodies_by_attribute(BodyAttribute.geos, sorted = True)
                 total_geo_count = 0
                 geo_count: list[int] = []
                 for geo in geologicals: 
@@ -420,11 +411,9 @@ class FSSReporter(Program):
                         geos: int = int(signal["Count"]) if signal["Type"] == "$SAA_SignalType_Geological;" else 0
                         total_geo_count += geos
                         geo_count.append(geos)
-                self.print(f"\n<geological>Biological signatures: {len(geologicals)} / {total_geo_count}</geological>" )
+                self.print(f"\n<geological>Biological signatures: {len(geologicals)} / {total_geo_count}</geological>", prefix="")
                 for i, planet in enumerate(geologicals):
-                    self.print(f"\t<geological>{str(planet["BodyName"]).removeprefix(system_name)} - ({geo_count[i]})</geological>")
-            case "FSDJump":
-                # TODO: reset the system
+                    self.print(f"\t<geological>Planet: {planet["BodyName"].removeprefix(system_name)} - ({geo_count[i]})</geological>", prefix="")
             case _: pass
 
 class BoxelSurvey(Program):
