@@ -41,6 +41,7 @@ class Module():
 
     MODULE_NAME: str = "UNNAMED_SURVEY"
     MODULE_VERSION: str = "?"
+    STATE_TYPE = ModuleState
     module_dir: Path
     state_file_path: Path
     caught_up: bool = True
@@ -109,28 +110,24 @@ class Module():
             self.print("Module currently <red>disabled</red>")
 
     def enable(self) -> None:
-        if self.state.enabled:
-            self.print("<green>Already enabled!</green>")
-        else:
+        if not self.state.enabled:
             self.state.enabled = True
             self.save_state()
-            self.print("<green>Enabled!</green>")
+        self.print("<green>Enabled!</green>")
 
     def disable(self) -> None:
-        if not self.state.enabled:
-            self.print("<red>Already disabled!</red>")
-        else:
+        if self.state.enabled:
             self.state.enabled = False
             self.save_state()
-            self.print("<red>Disabled!</red>")
+        self.print("<red>Disabled!</red>")
 
-    def save_state(self) -> None:
-        state: dict[str, Any] = {"enabled":self.state.enabled}
-        self.state_file_path.write_bytes(msgspec.json.encode(state))
+    def save_state(self) -> None:   # Most likely this should 
+        if not self.caught_up: return
+        self.state_file_path.write_bytes(msgspec.json.encode(self.state))
 
     def load_state(self) -> None:
         if self.state_file_path.exists():
-            self.state = msgspec.json.decode(self.state_file_path.read_bytes(), type = ModuleState)
+            self.state = msgspec.json.decode(self.state_file_path.read_bytes(), type = self.STATE_TYPE)
 
     async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:
         if event["event"] == "CaughtUp":
@@ -139,7 +136,7 @@ class Module():
     async def process_user_input(self, arguments: list[str], tg: asyncio.TaskGroup) -> None:
         if len(arguments) == 0:
             return
-        elif arguments[0].lower() == self.MODULE_NAME.lower():
+        elif arguments[0] == self.MODULE_NAME.lower():
             if len(arguments) < 2:
                 self.print("<warning>Received no commands!</warning>")
                 return
@@ -148,12 +145,12 @@ class Module():
                     self.enable()
                 case "disable":
                     self.disable()
-                case _: self.print("<warning>Received unknown command - </warning>" + arguments[1])
+                case _: return
 
     def print(self, *values: str, sep: str = " ", end: str = "\n", prefix: str | None = None) -> None:
         if not self.caught_up: return
         html = sep.join(values)
-        prefix = prefix if prefix != None else f"<survey_color>{self.MODULE_NAME}</survey_color>:"
+        prefix = prefix if prefix != None else f"<survey_color>{self.MODULE_NAME}</survey_color>: "
         if prefix:
             html = prefix + html
         print_formatted_text(HTML(html), sep=sep, end=end, style=self.style)

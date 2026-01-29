@@ -3,20 +3,18 @@ from src.modules.module import Module, ModuleState
 from src.util import read_file_by_lines, reserialize_file
 from prompt_toolkit.styles import Style
 import asyncio
-import json
 import math
-import msgspec
 from pathlib import Path
 from typing import Any
 
 class DW3DensityColumnSuveyState(ModuleState):
-    MAX_HEIGHT_DEVIATION = 10
+    MAX_HEIGHT_DEVIATION: float = 10
     system_in_sequence: int = 0
-    start_height = 0
+    start_height: int = 0
     direction: int = 0
-    valid_system = False
-    system_surveyed = False
-    survey_ongoing = False
+    valid_system: bool = False
+    system_surveyed: bool = False
+    survey_ongoing: bool = False
 
 class DW3DensityColumnSurvey(Module):
     style = Style.from_dict({
@@ -26,22 +24,15 @@ class DW3DensityColumnSurvey(Module):
     MODULE_NAME = "DW3DensityColumnSurvey"
     MODULE_VERSION: str = "0.0.1"
     survey_file_path: Path = Path("")
+    STATE_TYPE = DW3DensityColumnSuveyState
     core: CoreModule
-    state: DW3DensityColumnSuveyState = DW3DensityColumnSuveyState()
+    state: DW3DensityColumnSuveyState = DW3DensityColumnSuveyState() # pyright: ignore[reportIncompatibleVariableOverride]
 
     def __init__(self, core: CoreModule) -> None:
         super().__init__()
         self.survey_file_path = Path(self.module_dir / "default.tsv")
         self.save_state()
         self.core = core
-
-    def save_state(self) -> None:
-        if not self.caught_up: return
-        self.state_file_path.write_bytes(msgspec.json.encode(self.state))
-
-    def load_state(self) -> None:
-        if self.state_file_path.exists():
-            self.state = msgspec.json.decode(self.state_file_path.read_bytes(), type = DW3DensityColumnSuveyState) # pyright: ignore[reportIncompatibleVariableOverride]
 
     async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:
         await super().process_event(event, tg)
@@ -64,6 +55,7 @@ class DW3DensityColumnSurvey(Module):
         return self.state.start_height + 50 * self.state.direction * self.state.system_in_sequence
 
     async def process_user_input(self, arguments: list[str], tg: asyncio.TaskGroup) -> None:
+        await super().process_user_input(arguments, tg)
 
         # TODO: Refactor this mess
 
@@ -100,7 +92,7 @@ class DW3DensityColumnSurvey(Module):
                     case "undo":
                         survey = read_file_by_lines(self.survey_file_path)
                         if len(survey) > 0:
-                            removed = survey.pop(0).split()
+                            removed = survey.pop(0).split(sep="\t")
                             self.print("Removed datapoint: " + removed[0])
                         else:
                             self.print("No datapoints to remove!")
@@ -134,7 +126,7 @@ class DW3DensityColumnSurvey(Module):
                                 if count > 49:
                                     self.print("<error>Count value cannot exceed 49!</error>\n" +
                                     "Make sure you counted the number of neighboring systems in the nav panel correctly" +
-                                    "and make sure no FSD route is planned.")
+                                    " and make sure no FSD route is planned.")
                                     return
                             except ValueError:
                                 self.print("<error>Received invalid count value: </error>" + arguments[1])
@@ -171,19 +163,17 @@ class DW3DensityColumnSurvey(Module):
         rho: float = 50 / ((4/3) * math.pi * (distance ** 3)) if count + 1 == 50 else (count + 1) / ((4/3) * math.pi * 8000)
         #Rho is calculated based on the direct translation of the formula in the DW3 Stellar Density Scan Worksheet spreadsheet: 
         # =IFS(D6=50,50/((4*PI()/3)*(E6^3)),D6<50,D6/((4*pi()/3)*(20^3)))
-        datapoint = str(
-            str(self.core.state.current_system) + "\t" +
-            str(self.get_expected_galactic_height()) + "\t" +
-            str(count) + "\t" +
-            str(count + 1) + "\t" +
-            str(distance) + "\t" +
-            str(rho) + "\t" +
-            str(self.core.state.current_system.coordinates[0]) + "\t" +
-            str(self.core.state.current_system.coordinates[2]) + "\t" +
-            str(self.core.state.current_system.coordinates[1])
-        )
-        open(self.survey_file_path, "a").write(json.dumps(datapoint) + "\n")
-        self.print("<survey_color>Recorded datapoint for system: </survey_color>" + self.core.state.current_system.name)
+        datapoint: str = f"""{self.core.state.current_system.name}\t\
+{self.get_expected_galactic_height()}\t\
+{count}\t\
+{count + 1}\t\
+{distance}\t\
+{rho}\t\
+{self.core.state.current_system.coordinates[0]}\t\
+{self.core.state.current_system.coordinates[1]}\t\
+{self.core.state.current_system.coordinates[2]}\n"""
+        open(self.survey_file_path, "a").write(datapoint)
+        self.print(f"<survey_color>Recorded datapoint for system: </survey_color>{self.core.state.current_system.name}")
         self.print(datapoint)
         self.state.system_in_sequence += 1
         self.state.system_surveyed = True

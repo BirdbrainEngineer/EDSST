@@ -14,7 +14,6 @@ import asyncio
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 import traceback
-
 from src.modules.dw3densitycolumnsurvey import DW3DensityColumnSurvey
 
 # TODO: Spansh and/or EDSM integration.
@@ -105,7 +104,6 @@ async def input_loop(modules: list[Module], event_loop_task: asyncio.Task, tg: a
                 await module.process_user_input(arguments, tg) 
 
 async def main():
-
     print("\nElite: Dangerous Stellar Survey Tools " + src.version.EDSST_VERSION + " booting...\n")
 
     #TODO: Make loading of modules dynamic
@@ -113,6 +111,7 @@ async def main():
     modules: list[Module] = []
     core_module = CoreModule()
     modules.append(core_module)
+    #modules.append(EDSMModule())
     modules.append(FSSReporter(core_module))
     modules.append(BoxelSurvey(core_module))
     modules.append(DW3DensityColumnSurvey(core_module))

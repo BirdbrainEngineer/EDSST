@@ -1,0 +1,39 @@
+from src.modules import module
+from prompt_toolkit.styles import Style
+import asyncio
+from typing import Any
+
+class ExampleModuleState(module.ModuleState): # All variables in this class persist between program runs. 
+    example_state_entry: str = ""
+
+
+class ExampleModule(module.Module): 
+    style = Style.from_dict({   # The KeyValue-s in this dictionary can be accessed as html tag modifiers in self.print
+        "survey_color": "#00ff00",              # Example: self.print(f"<survey_color>Hello World.</survey_color>")
+    })
+
+    MODULE_NAME: str = "ExampleModule"
+    MODULE_VERSION: str = "?"
+    STATE_TYPE = ExampleModuleState     # If your module has its own state class, then this has to be set to it. 
+    state: ExampleModuleState = ExampleModuleState() # pyright: ignore[reportIncompatibleVariableOverride]
+    #module_dir: Path   - It is not recommended to change the default module directory path, but it is possible, if you want to do so for whatever reason.
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:   # Events are either new journal file lines or events produced by EDSST
+        await super().process_event(event, tg)
+        match event["event"]:   # Events are currently passed as dict[str, Any]
+            case "FSDJump": 
+                self.print(f"<survey_color>Enjoy the Ride!</survey_color>") # It is recommended to always use self.print
+            case _: pass
+
+    async def process_user_input(self, arguments: list[str], tg: asyncio.TaskGroup) -> None:
+        await super().process_user_input(arguments, tg)
+        if arguments[0] in ["examplemodule", "examplesurvey", "example"]:   # Currently this is the way to define extra aliases for your module
+            match arguments[1]:
+                case "echo":
+                    if len(arguments) < 2: return
+                    self.state.example_state_entry = " ".join(iter(str(arguments[2:])))
+                    self.print(f"{self.state.example_state_entry}", prefix="<survey_color>echo</survey_color>: ")
+                case _: pass

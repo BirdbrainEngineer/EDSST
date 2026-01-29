@@ -101,9 +101,10 @@ class CoreModule(Module):
 
     MODULE_NAME = "core"
     MODULE_VERSION: str = "0.0.1"
+    STATE_TYPE = CoreModuleState
     commander_greeted = False
     commander_name: str = ""
-    state: CoreModuleState = CoreModuleState()
+    state: CoreModuleState = CoreModuleState() # pyright: ignore[reportIncompatibleVariableOverride]
 
     # TODO: separate out different gas giant types
 
@@ -114,14 +115,6 @@ class CoreModule(Module):
         super().disable()
         self.print("<error>Disabling the core module can have unforseen side-effects!</error>")
         self.print("<error>Consider re-enabling, unless you really know what you are doing!</error>")
-
-    def save_state(self) -> None:
-        if not self.caught_up: return
-        self.state_file_path.write_bytes(msgspec.json.encode(self.state))
-
-    def load_state(self) -> None:
-        if self.state_file_path.exists():
-            self.state = msgspec.json.decode(self.state_file_path.read_bytes(), type = CoreModuleState) # pyright: ignore[reportIncompatibleVariableOverride]
 
     async def process_user_input(self, arguments: list[str], tg: asyncio.TaskGroup) -> None:
         if arguments[0] in ["core", "main", "base", "edsst"]:
@@ -193,7 +186,7 @@ class CoreModule(Module):
                             case "Rocky body":              self.state.current_system.bodies.record_attribute(BodyAttribute.rocky_body, bodyID)
                             case "Metal rich body":         self.state.current_system.bodies.record_attribute(BodyAttribute.metal_rich_body, bodyID)
                             case "High metal content body": self.state.current_system.bodies.record_attribute(BodyAttribute.high_metal_content_body, bodyID)
-                            case "Earthlike body":        self.state.current_system.bodies.record_attribute(BodyAttribute.earth_like_world_body, bodyID)
+                            case "Earthlike body":          self.state.current_system.bodies.record_attribute(BodyAttribute.earth_like_world_body, bodyID)
                             case "Ammonia world":           self.state.current_system.bodies.record_attribute(BodyAttribute.ammonia_world_body, bodyID)
                             case "Water world":             self.state.current_system.bodies.record_attribute(BodyAttribute.water_world_body, bodyID)
                             case _:                         self.state.current_system.bodies.record_attribute(BodyAttribute.gas_giant_body, bodyID)

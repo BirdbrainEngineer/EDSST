@@ -1,12 +1,39 @@
 from pathlib import Path
 from math import sqrt
 import subprocess
+from typing import Any
 import pyperclip
 import toml
+import httpx
 
 config = toml.load("config.toml")
 
 WL_COPY_BIN_PATH: None | Path = Path(config["wl_copy_bin_path"]) if "wl_copy_bin_path" in config else None
+
+commander_name = config["commander_name"]
+edsm_api_key = config["edsm_api_key"]
+
+def get_edsm_bodies(system_name: str):
+    r = httpx.get("https://www.edsm.net/api-system-v1/bodies", params={"systemName": system_name})
+    return r.json()
+
+def post_to_edsm(event: str):
+    data: dict[str, Any] = {
+        "commanderName": commander_name,
+        "apiKey": edsm_api_key,
+        "fromSoftware": "EDSST",
+        "fromSoftwareVersion": "0.0.1",
+        "fromGameVersion": "4.3.0.1",
+        "fromGameBuild": "r322188/r0 ",
+        "message": event
+    }
+
+    r = httpx.post("https://www.edsm.net/api-journal-v1", data=data)
+    r.raise_for_status()
+    code = r.json()
+    print(code)
+    assert isinstance(code, int)
+    return code
 
 def text_to_clipboard(text: str) -> None:
     if WL_COPY_BIN_PATH is not None:

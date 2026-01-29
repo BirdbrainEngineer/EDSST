@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "cli-color-py>=0.6.0",
+    "httpx>=0.28.1",
     "msgspec>=0.20.0",
     "prompt-toolkit>=3.0.52",
     "pyperclip>=1.11.0",
