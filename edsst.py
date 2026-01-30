@@ -5,7 +5,7 @@ from src.modules.fssreporter import FSSReporter
 from src.modules.core import CoreModule
 from src.modules.module import Module
 from src.modules.dw3densitycolumnsurvey import DW3DensityColumnSurvey
-from src.modules.examplemodule import ExampleModule
+from src.modules.edsm import EDSM
 #from src.modules.edsm import EDSM
 import src.version
 from pathlib import Path
@@ -45,8 +45,9 @@ async def listen_for_events():
             for line in file_by_lines:
                 if not line: 
                     continue
+                event_raw = line
                 event = json.loads(line)
-                yield event
+                yield event, event_raw
     else:
         latest_journal_file_path = None
 
@@ -56,7 +57,7 @@ async def listen_for_events():
         print("EDSST: Did not find journal file.  Please confirm journal directory is set correctly in the config.toml file.")
         exit()
 
-    yield {"event": "CaughtUp"}
+    yield {"event": "CaughtUp"}, "{\"event\": \"CaughtUp\"}"
 
     file = open(latest_journal_file_path)
 
@@ -70,27 +71,29 @@ async def listen_for_events():
                 for line in file.read().strip().split("\n"):
                     if not line: 
                         continue
+                    event_raw = line
                     event = json.loads(line)
                     if event["event"] == "Shutdown":
                         print("EDSST: Detected shutdown.")
-                    yield event
+                    yield event, event_raw
             else:
                 new_latest_journal_file_path = get_latest_journal_file_path()
                 if new_latest_journal_file_path and latest_journal_file_path != new_latest_journal_file_path:
-                    print(f"EDSST: Synchronized to journal log file: {new_latest_journal_file_path}")
+                    print(f"EDSST: Synchronized to journal log file: {new_latest_journal_file_path.name}")
                     latest_journal_file_path = new_latest_journal_file_path
                     file.close()
                     file = open(latest_journal_file_path)
 
 async def event_loop(modules: list[Module], tg: asyncio.TaskGroup):
-    async for event in listen_for_events():
+    async for event, event_raw in listen_for_events():
         for module in modules:
             if module.state.enabled or not module.caught_up:
                 try:
-                    await module.process_event(event, tg)
+                    await module.process_event(event, event_raw, tg)
                 except Exception:
-                    module.state.enabled = False
+                    module.print(f"Encountered an unrecoverable error:")
                     print(traceback.format_exc())
+                    module.disable()
 
 async def input_loop(modules: list[Module], event_loop_task: asyncio.Task, tg: asyncio.TaskGroup) -> None: # pyright: ignore[reportUnknownParameterType, reportMissingTypeArgument]
     session = PromptSession() # pyright: ignore[reportUnknownVariableType]
@@ -113,11 +116,11 @@ async def main():
     modules: list[Module] = []
     core_module = CoreModule()
     modules.append(core_module)
-    #modules.append(EDSM())
+    modules.append(EDSM())
     modules.append(FSSReporter(core_module))
     modules.append(BoxelSurvey(core_module))
     modules.append(DW3DensityColumnSurvey(core_module))
-    modules.append(ExampleModule())
+    #modules.append(ExampleModule())
     for module in modules:
         module.caught_up = False 
     

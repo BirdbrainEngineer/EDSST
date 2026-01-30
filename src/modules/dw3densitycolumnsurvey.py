@@ -34,8 +34,8 @@ class DW3DensityColumnSurvey(Module):
         self.save_state()
         self.core = core
 
-    async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:
-        await super().process_event(event, tg)
+    async def process_event(self, event: Any, event_raw: str, tg: asyncio.TaskGroup) -> None:
+        await super().process_event(event, event_raw,  tg)
         if self.state.survey_ongoing:
             match event["event"]:
                 case "FSDJump":
@@ -100,7 +100,7 @@ class DW3DensityColumnSurvey(Module):
                         reserialize_file(self.survey_file_path, survey)
                         self.state.system_in_sequence -= 1
                         self.state.system_surveyed = False
-                        await self.process_event({"event":"FSDJump"}, tg)
+                        await self.process_event({"event":"FSDJump"}, "{\"event\": \"FSDJump\"}", tg)
                         self.save_state()
 
                     case "reset" | "clear":
@@ -172,7 +172,14 @@ class DW3DensityColumnSurvey(Module):
 {self.core.state.current_system.coordinates[0]}\t\
 {self.core.state.current_system.coordinates[1]}\t\
 {self.core.state.current_system.coordinates[2]}\n"""
-        open(self.survey_file_path, "a").write(datapoint)
+        if self.state.direction == 1:
+            open(self.survey_file_path, "a").write(datapoint)
+        else:
+            data: list[str] = []
+            data.append(datapoint)
+            for line in self.survey_file_path.open().readlines():
+                data.append(line)
+            reserialize_file(self.survey_file_path, data)
         self.print(f"<module_color>Recorded datapoint for system: </module_color>{self.core.state.current_system.name}")
         self.print(datapoint)
         self.state.system_in_sequence += 1

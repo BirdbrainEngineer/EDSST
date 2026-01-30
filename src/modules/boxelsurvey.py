@@ -9,7 +9,7 @@ from typing import Any
 
 class BoxelSurvey(Module):
     style = Style.from_dict({
-        "survey_color": "#ffff00",
+        "module_color": "#ffff00",
     })
 
     MODULE_NAME = "BoxelSurvey"
@@ -26,8 +26,8 @@ class BoxelSurvey(Module):
         self.system_list_file_path = self.module_dir / Path("boxel_survey_system_list")
         self.core = core
 
-    async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:
-        await super().process_event(event, tg)
+    async def process_event(self, event: Any, event_raw: str, tg: asyncio.TaskGroup) -> None:
+        await super().process_event(event, event_raw, tg)
         match event["event"]:
             case "FSDJump":
                 if self.next_system.lower() == event["StarSystem"].lower():

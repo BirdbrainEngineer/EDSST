@@ -21,8 +21,8 @@ class ExampleModule(module.Module):
     def __init__(self) -> None:
         super().__init__()
 
-    async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:   # Events are either new journal file lines or events produced by EDSST
-        await super().process_event(event, tg)
+    async def process_event(self, event: Any, event_raw: str, tg: asyncio.TaskGroup) -> None:   # Events are either new journal file lines or events produced by EDSST
+        await super().process_event(event, event_raw, tg)
         match event["event"]:   # Events are currently passed as dict[str, Any]
             case "FSDJump": 
                 self.print(f"<module_color>Enjoy the Ride!</module_color>") # It is recommended to always use self.print

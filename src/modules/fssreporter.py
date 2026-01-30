@@ -12,7 +12,7 @@ from typing import Any
 
 class FSSReporter(Module):
     style = Style.from_dict({
-        "survey_color": "#00ffff",
+        "module_color": "#00ffff",
         "valuable": "#6060ff",
         "biological": "#00ff00",
         "geological": "#ffff00",
@@ -76,8 +76,8 @@ class FSSReporter(Module):
 
         self.print("<survey_color>  ╚═══════════════════════════════════════════════════════════════════════════════════</survey_color>\n", prefix="")
 
-    async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:
-        await super().process_event(event, tg)
+    async def process_event(self, event: Any, event_raw: str, tg: asyncio.TaskGroup) -> None:
+        await super().process_event(event, event_raw, tg)
         match event["event"]:
             case "FSSAllBodiesFound":
                 if not self.report_scheduled:

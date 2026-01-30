@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+MODULES_DATA_PATH = Path("modules_data")
+
 global_style = Style.from_dict({
     "error": "#ff4040",
     "warning": "#ffff80",
@@ -48,62 +50,52 @@ class Module():
     state: ModuleState = ModuleState()
 
     def __init__(self) -> None:
-        first_boot = False
+        module_versions: list[dict[str, str]] = []
+        first_boot = True
         version_changed = False
         previous_version: str = "N/A"
         self.style = Style(self.style.style_rules + global_style.style_rules)
-        self.print("Loading module version " + self.MODULE_VERSION + "...")
-        self.module_dir = Path("modules") / Path(self.MODULE_NAME.lower())
-        self.state_file_path = self.module_dir / Path(self.MODULE_NAME.lower() + "_state")
+        self.module_dir = MODULES_DATA_PATH / Path(self.MODULE_NAME.lower())
         if not self.module_dir.exists():
             self.module_dir.mkdir()
-            first_boot = True
-
-        try:
-            module_versions = json.load(MODULE_VERSIONS_PATH.open())
-            first_boot = True
+        self.state_file_path = self.module_dir / Path(self.MODULE_NAME.lower() + "_state")
+        if not MODULE_VERSIONS_PATH.exists():
+            self.print("<error>Could not find versions file!</error> Attempting to make one.")
+            module_versions.append({"module_name": self.MODULE_NAME, "version": self.MODULE_VERSION})
+            first_boot = False
+            try: 
+                json.dump(module_versions, MODULE_VERSIONS_PATH.open("w"))
+                self.print("<warning>New versions file successfully created!</warning>")
+            except:
+                self.print("<error>Could not create versions file!</error>")
+        else:    
+            try:
+                module_versions = json.load(MODULE_VERSIONS_PATH.open())
+            except:
+                self.print("<error>Could not open versions file!</error>")
             for module in module_versions:
                 if module["module_name"] == self.MODULE_NAME:
                     first_boot = False
-                    if module["version"] != self.MODULE_VERSION:
+                    previous_version = module["version"]
+                    if previous_version != self.MODULE_VERSION:
                         module["version"] = self.MODULE_VERSION
                         version_changed = True
-                        json.dump(module_versions, MODULE_VERSIONS_PATH.open("w"))
-                        break
-            module_versions.append({"module_name": self.MODULE_NAME, "version": self.MODULE_VERSION})
-            try:
-                json.dump(module_versions, MODULE_VERSIONS_PATH.open("w"))
-            except:
-                self.print("<error>Could not add to versions file! EDSST is in a peculiar state... Tread with caution.</error>")
-        except Exception as e: # pyright: ignore[reportUnusedVariable]
-            if MODULE_VERSIONS_PATH.exists():
-                self.print("Could not load version file!")
-            else:
-                self.print("<error>Could not find versions file!</error>")
-                self.print("<warning>Attempting to make one.</warning>")
-                module_versions: list[dict[str, Any]] = [{"module_name": self.MODULE_NAME, "version": self.MODULE_VERSION}]
-                first_boot = True
-                try:
-                    json.dump(module_versions, MODULE_VERSIONS_PATH.open("w"))
-                    self.print("<yellow>New versions file successfully created.</yellow>")
-                except:
-                    self.print("<error>Could not make a versions file! EDSST is in a peculiar state... Tread with caution.</error>")
-
+                        self.print("<warning>New module versions detected!</warning> ")
+                        self.print(previous_version + " -> " + self.MODULE_VERSION)
+                    try:    json.dump(module_versions, MODULE_VERSIONS_PATH.open("w"))
+                    except: self.print("<error>Could not update versions file!</error>")
+                    break
+            if first_boot: module_versions.append({"module_name": self.MODULE_NAME, "version": self.MODULE_VERSION})
         if first_boot: self.print("<warning>First boot of module detected!</warning>")
         if version_changed:
-            self.print("<warning>New module version detected!</warning> ")
-            self.print(previous_version + " -> " + self.MODULE_VERSION)
-
-        try:
-            self.load_state()
-            self.save_state()
-        except Exception as ex: # pyright: ignore[reportUnusedVariable]
-            raise ex
-            if not first_boot or not version_changed:
-                self.print("<error>State file was found to be corrupted or missing! Data loss or corruption is possible!</error>")
             self.print("<warning>Initializing a new state file...</warning>")
             self.save_state()
-        self.print("Module successfully loaded!")
+        try:
+            json.dump(module_versions, MODULE_VERSIONS_PATH.open("w"))
+        except:
+            self.print("<error>Could not update versions file!</error>")
+        self.load_state()
+        self.print(f"Loaded module version {self.MODULE_VERSION}")
         if self.state.enabled:
             self.print("Module currently <green>enabled</green>")
         else:
@@ -129,14 +121,12 @@ class Module():
         if self.state_file_path.exists():
             self.state = msgspec.json.decode(self.state_file_path.read_bytes(), type = self.STATE_TYPE)
 
-    async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:
+    async def process_event(self, event: Any, event_raw: str, tg: asyncio.TaskGroup) -> None:
         if event["event"] == "CaughtUp":
             self.caught_up = True
 
     async def process_user_input(self, arguments: list[str], tg: asyncio.TaskGroup) -> None:
-        if len(arguments) == 0:
-            return
-        elif arguments[0] == self.MODULE_NAME.lower():
+        if arguments[0] == self.MODULE_NAME.lower():
             if len(arguments) < 2:
                 self.print("<warning>Received no commands!</warning>")
                 return

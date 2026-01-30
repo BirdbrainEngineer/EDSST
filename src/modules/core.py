@@ -139,8 +139,8 @@ class CoreModule(Module):
                         case _: pass
                 case _: await super().process_user_input(arguments, tg)
 
-    async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:
-        await super().process_event(event, tg)
+    async def process_event(self, event: Any, event_raw: str, tg: asyncio.TaskGroup) -> None:
+        await super().process_event(event, event_raw, tg)
         if self.state.event_stream_enabled: self.print(event["event"])
         bodyID = -1
         if "BodyID" in event: bodyID = int(event["BodyID"])
