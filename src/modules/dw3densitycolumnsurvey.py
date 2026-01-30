@@ -18,7 +18,7 @@ class DW3DensityColumnSuveyState(ModuleState):
 
 class DW3DensityColumnSurvey(Module):
     style = Style.from_dict({
-        "survey_color": "#ff00ff",
+        "module_color": "#ff00ff",
     })
 
     MODULE_NAME = "DW3DensityColumnSurvey"
@@ -81,7 +81,7 @@ class DW3DensityColumnSurvey(Module):
                             self.survey_file_path = Path(self.module_dir / str(self.core.state.current_system.name + ".tsv"))
                             self.enable()
                             self.save_state()
-                            self.print("<survey_color>Started Density Column Survey from system: </survey_color>" + self.core.state.current_system.name)
+                            self.print("<module_color>Started Density Column Survey from system: </module_color>" + self.core.state.current_system.name)
                             self.print("Please make sure to enter current system's count and max distance before continuing!")
                             return
                         else:
@@ -173,14 +173,14 @@ class DW3DensityColumnSurvey(Module):
 {self.core.state.current_system.coordinates[1]}\t\
 {self.core.state.current_system.coordinates[2]}\n"""
         open(self.survey_file_path, "a").write(datapoint)
-        self.print(f"<survey_color>Recorded datapoint for system: </survey_color>{self.core.state.current_system.name}")
+        self.print(f"<module_color>Recorded datapoint for system: </module_color>{self.core.state.current_system.name}")
         self.print(datapoint)
         self.state.system_in_sequence += 1
         self.state.system_surveyed = True
         self.state.valid_system = False
         self.save_state()
         if self.state.system_in_sequence == 20:
-            self.print("<survey_color>Survey completed!</survey_color>\n")
+            self.print("<module_color>Survey completed!</module_color>\n")
             self.state.system_in_sequence = 0
             self.state.system_surveyed = False
             self.save_state()

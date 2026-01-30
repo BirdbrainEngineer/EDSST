@@ -3,20 +3,20 @@ from prompt_toolkit.styles import Style
 import asyncio
 from typing import Any
 
-class ExampleModuleState(module.ModuleState): # All variables in this class persist between program runs. 
-    example_state_entry: str = ""
+class EDSMState(module.ModuleState): # All variables in this class persist between program runs. 
+    events_buffer: list[str] = []
 
 
-class ExampleModule(module.Module): 
+class EDSM(module.Module): 
     style = Style.from_dict({   # The KeyValue-s in this dictionary can be accessed as html tag modifiers in self.print
-        "module_color": "#00ff00",              # Example: self.print(f"<module_color>Hello World.</module_color>")
+        "module_color": "#5bc0de",              # Example: self.print(f"<module_color>Hello World.</module_color>")
     })
 
     MODULE_NAME: str = "ExampleModule"
     MODULE_VERSION: str = "?"
     STATE_TYPE = ExampleModuleState     # If your module has its own state class, then this has to be set to it. 
     state: ExampleModuleState = ExampleModuleState() # pyright: ignore[reportIncompatibleVariableOverride]
-    #module_dir: Path   - It is not recommended to change the default module directory path, but it is possible, if you want to do so for whatever reason.
+    responses: list[int] = []
 
     def __init__(self) -> None:
         super().__init__()

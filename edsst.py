@@ -4,6 +4,9 @@ from src.modules.boxelsurvey import BoxelSurvey
 from src.modules.fssreporter import FSSReporter
 from src.modules.core import CoreModule
 from src.modules.module import Module
+from src.modules.dw3densitycolumnsurvey import DW3DensityColumnSurvey
+from src.modules.examplemodule import ExampleModule
+#from src.modules.edsm import EDSM
 import src.version
 from pathlib import Path
 from typing import Iterator
@@ -14,7 +17,6 @@ import asyncio
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 import traceback
-from src.modules.dw3densitycolumnsurvey import DW3DensityColumnSurvey
 
 # TODO: Spansh and/or EDSM integration.
 
@@ -111,10 +113,11 @@ async def main():
     modules: list[Module] = []
     core_module = CoreModule()
     modules.append(core_module)
-    #modules.append(EDSMModule())
+    #modules.append(EDSM())
     modules.append(FSSReporter(core_module))
     modules.append(BoxelSurvey(core_module))
     modules.append(DW3DensityColumnSurvey(core_module))
+    modules.append(ExampleModule())
     for module in modules:
         module.caught_up = False 
     

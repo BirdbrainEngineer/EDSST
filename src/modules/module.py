@@ -36,7 +36,7 @@ class ModuleState(msgspec.Struct):
 
 class Module():
     style = Style.from_dict({
-        "survey_color": "#ffffff",
+        "module_color": "#ffffff",
     })
 
     MODULE_NAME: str = "UNNAMED_SURVEY"
@@ -150,7 +150,7 @@ class Module():
     def print(self, *values: str, sep: str = " ", end: str = "\n", prefix: str | None = None) -> None:
         if not self.caught_up: return
         html = sep.join(values)
-        prefix = prefix if prefix != None else f"<survey_color>{self.MODULE_NAME}</survey_color>: "
+        prefix = prefix if prefix != None else f"<module_color>{self.MODULE_NAME}</module_color>: "
         if prefix:
             html = prefix + html
         print_formatted_text(HTML(html), sep=sep, end=end, style=self.style)

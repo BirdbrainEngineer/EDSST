@@ -96,7 +96,7 @@ class CoreModuleState(ModuleState):
 
 class CoreModule(Module):
     style = Style.from_dict({
-        "survey_color": "#ff8000",
+        "module_color": "#ff8000",
     })
 
     MODULE_NAME = "core"
