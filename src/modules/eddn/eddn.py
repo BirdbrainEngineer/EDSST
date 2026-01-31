@@ -29,7 +29,7 @@ class EDDN(module.Module):
     })
 
     MODULE_NAME: str = "EDDN"
-    MODULE_VERSION: str = "0.0.2"
+    MODULE_VERSION: str = "0.0.3"
     error_dump_path: Path
     STATE_TYPE = EDDNState     # If your module has its own state class, then this has to be set to it. 
     state: EDDNState = EDDNState()
@@ -52,7 +52,7 @@ class EDDN(module.Module):
             return
         else:
             match event["event"]:
-                case "Docked" | "FSDJump" | "Scan" | "Location" | "SAASignalsFound" | "CarrierJump" | "CodexEntry":
+                case "Docked" | "FSDJump" | "Scan" | "Location" | "SAASignalsFound" | "CarrierJump":
                     await self.post_journal_v1(event)
                 case "FSSAllBodiesFound":
                     await self.post_fssallbodiesfound(event)
@@ -84,7 +84,7 @@ class EDDN(module.Module):
             "event":            event["event"],
             "horizons":         self.core.is_horizons,
             "odyssey":          self.core.is_odyssey,
-            "StarSystem":       self.core.state.current_system.name if self.core.state.current_system.name == event["SystemName"] else None,
+            "StarSystem":       self.core.state.current_system.name if self.core.state.current_system.name == event["StarSystem"] else None,
             "StarPos":          [self.core.state.current_system.coordinates[0], self.core.state.current_system.coordinates[1], self.core.state.current_system.coordinates[2]],
             "SystemAddress":    self.core.state.current_system.address if self.core.state.current_system.address == event["SystemAddress"] else None,
             "BodyID":           event["Progress"],
@@ -104,10 +104,10 @@ class EDDN(module.Module):
             "event":            event["event"],
             "horizons":         self.core.is_horizons,
             "odyssey":          self.core.is_odyssey,
-            "StarSystem":       self.core.state.current_system.name if self.core.state.current_system.name == event["SystemName"] else None,
+            "SystemName":       self.core.state.current_system.name if self.core.state.current_system.name == event["SystemName"] else None,
             "StarPos":          [self.core.state.current_system.coordinates[0], self.core.state.current_system.coordinates[1], self.core.state.current_system.coordinates[2]],
             "SystemAddress":    self.core.state.current_system.address if self.core.state.current_system.address == event["SystemAddress"] else None,
-            "Progress":         event["Progress"],
+            #"Progress":         event["Progress"],
             "BodyCount":        event["BodyCount"],
             "NonBodyCount":     event["NonBodyCount"],
         }
@@ -119,7 +119,7 @@ class EDDN(module.Module):
             "event":            event["event"],
             "horizons":         self.core.is_horizons,
             "odyssey":          self.core.is_odyssey,
-            "StarSystem":       self.core.state.current_system.name if self.core.state.current_system.name == event["SystemName"] else None,
+            "StarSystem":       self.core.state.current_system.name if event["BodyName"].startswith(self.core.state.current_system.name) else None,
             "StarPos":          [self.core.state.current_system.coordinates[0], self.core.state.current_system.coordinates[1], self.core.state.current_system.coordinates[2]],
             "SystemAddress":    self.core.state.current_system.address if self.core.state.current_system.address == event["SystemAddress"] else None,
             "BodyID":           event["BodyID"],
@@ -135,7 +135,7 @@ class EDDN(module.Module):
             "event":            event["event"],
             "horizons":         self.core.is_horizons,
             "odyssey":          self.core.is_odyssey,
-            "StarSystem":       self.core.state.current_system.name if self.core.state.current_system.name == event["SystemName"] else None,
+            "SystemName":       self.core.state.current_system.name if self.core.state.current_system.name == event["SystemName"] else None,
             "StarPos":          [self.core.state.current_system.coordinates[0], self.core.state.current_system.coordinates[1], self.core.state.current_system.coordinates[2]],
             "SystemAddress":    self.core.state.current_system.address if self.core.state.current_system.address == event["SystemAddress"] else None,
             "Count":            event["Count"],
@@ -149,20 +149,16 @@ class EDDN(module.Module):
             "event":            event["event"],
             "horizons":         self.core.is_horizons,
             "odyssey":          self.core.is_odyssey,
-            "StarSystem":       self.core.state.current_system.name if self.core.state.current_system.name == event["StarSystem"] else None,
+            "StarSystem":       self.core.state.current_system.name if "StarSystem" not in event else self.core.state.current_system.name if self.core.state.current_system.name == event["StarSystem"] else None,
             "StarPos":          [self.core.state.current_system.coordinates[0], self.core.state.current_system.coordinates[1], self.core.state.current_system.coordinates[2]],
             "SystemAddress":    self.core.state.current_system.address if self.core.state.current_system.address == event["SystemAddress"] else None,
         }
         event.update(data)
         data = event
         self.remove_localised(data)
-        for key in data:
-            if key in ("ActiveFine", "CockpitBreach", "BoostUsed", "FuelLevel", "FuelUsed", "JumpDist", "Latitude", "Longitude", "Wanted", "IsNewEntry", "NewTraitsDiscovered", "Traits", "VoucherAmount"):
-                del data[key]
-            if key == "Factions":
-                for factions_key in data[key]:
-                    if factions_key in ("HappiestSystem", "HomeSystem", "MyReputation", "SquadronFaction"):
-                        del data[key][factions_key]
+        self.try_remove_keys(data, ["ActiveFine", "CockpitBreach", "BoostUsed", "FuelLevel", "FuelUsed", "JumpDist", "Latitude", "Longitude", "Wanted", "IsNewEntry", "NewTraitsDiscovered", "Traits", "VoucherAmount"])
+        if "Factions" in data:
+            self.try_remove_keys(data["Factions"], ["HappiestSystem", "HomeSystem", "MyReputation", "SquadronFaction"])
         self.validate_and_post(data, eddn_journal_schema)
         
 
@@ -189,7 +185,7 @@ class EDDN(module.Module):
         r = httpx.post("https://eddn.edcd.io:4430/upload/", json=data, timeout=15.0)
         r.raise_for_status()
         if TESTING_MODE == TestingMode.Testing:
-            self.print(f"<blue>Testing</blue>: On <bright_blue>{data["$schemaRef"].removeprefix("https://eddn.edcd.io/schemas/")}</bright_blue> got response code <magenta>{r.status_code}</magenta> - {r.text}")
+            self.print(f"<blue>Testing</blue>: With event <mint>{data["message"]["event"]}</mint> on <bright_blue>{data["$schemaRef"].removeprefix("https://eddn.edcd.io/schemas/")}</bright_blue> got response code <magenta>{r.status_code}</magenta> - {r.text}")
         if r.status_code != 200:
             self.print(f"<error>Got back code:</error> <magenta>{r.status_code}</magenta>")
             if r.status_code == 400 or r.status_code == 426:
@@ -202,9 +198,22 @@ class EDDN(module.Module):
             self.disable()
 
     def remove_localised(self, data: dict[str, Any]) -> None:
+        delete_keys: list[str] = []
         for key in data:
-            if key.endswith("_Localised"):
-                del data[key]
-            if isinstance(data[key], dict):
-                self.remove_localised(data)
 
+            if key.endswith("_Localised"):
+                delete_keys.append(key)
+            elif isinstance(data[key], dict):
+                self.remove_localised(data[key])
+            elif isinstance(data[key], list):
+                for item in data[key]:
+                    if isinstance(item, dict):
+                        self.remove_localised(item)
+        
+        for key in delete_keys:
+            del data[key]
+
+    def try_remove_keys(self, data: dict[str, Any], keys: list[str]) -> None:
+        for key in keys:
+            if key in data:
+                del data[key]
