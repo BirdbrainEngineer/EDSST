@@ -20,7 +20,6 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 import traceback
 
-# TODO: Spansh and/or EDSM integration.
 
 config = toml.load("config.toml")
 
@@ -111,6 +110,8 @@ async def input_loop(modules: list[Module], event_loop_task: asyncio.Task, tg: a
             result = await session.prompt_async(">>> ") # pyright: ignore[reportUnknownVariableType]
             assert isinstance(result, str)
             if str(result).lower() == "exit":
+                for module in modules:
+                    module.save_state()
                 event_loop_task.cancel()
                 return
         await process_user_input(modules=modules, tg=tg, user_input=result)
