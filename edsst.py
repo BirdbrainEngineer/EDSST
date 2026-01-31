@@ -1,10 +1,12 @@
 ### Elite: Dangerous Stellar Survey Tools
 
+from functools import partial
 from src.modules.boxelsurvey import BoxelSurvey
 from src.modules.fssreporter import FSSReporter
 from src.modules.core import CoreModule
 from src.modules.module import Module
 from src.modules.dw3densitycolumnsurvey import DW3DensityColumnSurvey
+from src.modules.chatboxrelay import ChatboxRelay
 from src.modules.edsm import EDSM
 #from src.modules.edsm import EDSM
 import src.version
@@ -95,18 +97,23 @@ async def event_loop(modules: list[Module], tg: asyncio.TaskGroup):
                     print(traceback.format_exc())
                     module.disable()
 
+async def process_user_input(modules: list[Module], tg: asyncio.TaskGroup, user_input: str):
+    arguments = user_input.lower().split()
+    if arguments:
+        for module in modules:
+            await module.process_user_input(arguments, tg) 
+
+
 async def input_loop(modules: list[Module], event_loop_task: asyncio.Task, tg: asyncio.TaskGroup) -> None: # pyright: ignore[reportUnknownParameterType, reportMissingTypeArgument]
     session = PromptSession() # pyright: ignore[reportUnknownVariableType]
     while True:
         with patch_stdout():
             result = await session.prompt_async(">>> ") # pyright: ignore[reportUnknownVariableType]
-            if str(result).lower() == "exit": # pyright: ignore[reportUnknownArgumentType]
+            assert isinstance(result, str)
+            if str(result).lower() == "exit":
                 event_loop_task.cancel()
                 return
-        arguments = str(result).lower().split() # pyright: ignore[reportUnknownArgumentType]
-        if len(arguments) > 0:
-            for module in modules:
-                await module.process_user_input(arguments, tg) 
+        await process_user_input(modules=modules, tg=tg, user_input=result)
 
 async def main():
     print("\nElite: Dangerous Stellar Survey Tools " + src.version.EDSST_VERSION + " booting...\n")
@@ -120,6 +127,7 @@ async def main():
     modules.append(FSSReporter(core_module))
     modules.append(BoxelSurvey(core_module))
     modules.append(DW3DensityColumnSurvey(core_module))
+    modules.append(ChatboxRelay(partial(process_user_input, modules)))
     #modules.append(ExampleModule())
     for module in modules:
         module.caught_up = False 

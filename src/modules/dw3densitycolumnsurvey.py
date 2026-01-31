@@ -26,7 +26,7 @@ class DW3DensityColumnSurvey(Module):
     survey_file_path: Path = Path("")
     STATE_TYPE = DW3DensityColumnSuveyState
     core: CoreModule
-    state: DW3DensityColumnSuveyState = DW3DensityColumnSuveyState() # pyright: ignore[reportIncompatibleVariableOverride]
+    state: DW3DensityColumnSuveyState = DW3DensityColumnSuveyState()
 
     def __init__(self, core: CoreModule) -> None:
         super().__init__()

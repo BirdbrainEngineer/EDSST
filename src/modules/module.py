@@ -1,3 +1,4 @@
+from html import escape
 from src.version import MODULE_VERSIONS_PATH
 import msgspec
 from prompt_toolkit import print_formatted_text
@@ -47,9 +48,10 @@ class Module():
     module_dir: Path
     state_file_path: Path
     caught_up: bool = True
-    state: ModuleState = ModuleState()
+    state: ModuleState
 
     def __init__(self) -> None:
+        self.state = ModuleState()
         module_versions: list[dict[str, str]] = []
         first_boot = True
         version_changed = False
@@ -119,6 +121,7 @@ class Module():
 
     def load_state(self) -> None:
         if self.state_file_path.exists():
+            #self.print(f"Loading {escape(str(self.state_file_path))} with {escape(str(self.STATE_TYPE))}")
             self.state = msgspec.json.decode(self.state_file_path.read_bytes(), type = self.STATE_TYPE)
 
     async def process_event(self, event: Any, event_raw: str, tg: asyncio.TaskGroup) -> None:
