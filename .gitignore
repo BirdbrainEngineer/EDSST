@@ -13,3 +13,4 @@ config.toml
 module_versions.json
 modules/
 !src/modules
+test.json

@@ -33,7 +33,16 @@ class BodyAttribute(Enum):
     earth_like_world_body = auto()
     ammonia_world_body = auto()
     water_world_body = auto()
-    gas_giant_body = auto()
+    gas_giant_type_I = auto()
+    gas_giant_type_II = auto()
+    gas_giant_type_III = auto()
+    gas_giant_type_IV = auto()
+    gas_giant_type_V = auto()
+    gas_giant_water_with_life = auto()
+    gas_giant_ammonia_with_life = auto()
+    gas_giant_water = auto()
+    gas_giant_helium_rich = auto()
+    gas_giant_helium = auto()
     landable = auto()
     atmospheric = auto()
     ringed = auto()
@@ -99,7 +108,7 @@ class CoreModule(Module):
     })
 
     MODULE_NAME = "core"
-    MODULE_VERSION: str = "0.1.1"
+    MODULE_VERSION: str = "0.2.0"
     STATE_TYPE = CoreModuleState
     commander_greeted = False
     frontier_id: str = ""
@@ -171,7 +180,6 @@ class CoreModule(Module):
                 self.commander_greeted = True
 
             case "Scan":
-
                 is_star = True if "StarType" in event else False
                 is_cluster = True if "Cluster" in str(event["BodyName"]) else False
                 self.state.current_system.bodies.add_body_signal(event)
@@ -207,15 +215,26 @@ class CoreModule(Module):
                             if event["AtmosphereType"] != "None":
                                 self.state.current_system.bodies.record_attribute(BodyAttribute.atmospheric, bodyID)
                         match event["PlanetClass"]:
-                            case "Icy body":                self.state.current_system.bodies.record_attribute(BodyAttribute.icy_body, bodyID)
-                            case "Rocky ice body":          self.state.current_system.bodies.record_attribute(BodyAttribute.rocky_icy_body, bodyID)
-                            case "Rocky body":              self.state.current_system.bodies.record_attribute(BodyAttribute.rocky_body, bodyID)
-                            case "Metal rich body":         self.state.current_system.bodies.record_attribute(BodyAttribute.metal_rich_body, bodyID)
-                            case "High metal content body": self.state.current_system.bodies.record_attribute(BodyAttribute.high_metal_content_body, bodyID)
-                            case "Earthlike body":          self.state.current_system.bodies.record_attribute(BodyAttribute.earth_like_world_body, bodyID)
-                            case "Ammonia world":           self.state.current_system.bodies.record_attribute(BodyAttribute.ammonia_world_body, bodyID)
-                            case "Water world":             self.state.current_system.bodies.record_attribute(BodyAttribute.water_world_body, bodyID)
-                            case _:                         self.state.current_system.bodies.record_attribute(BodyAttribute.gas_giant_body, bodyID)
+                            case "Icy body":                        self.state.current_system.bodies.record_attribute(BodyAttribute.icy_body, bodyID)
+                            case "Rocky ice body":                  self.state.current_system.bodies.record_attribute(BodyAttribute.rocky_icy_body, bodyID)
+                            case "Rocky body":                      self.state.current_system.bodies.record_attribute(BodyAttribute.rocky_body, bodyID)
+                            case "Metal rich body":                 self.state.current_system.bodies.record_attribute(BodyAttribute.metal_rich_body, bodyID)
+                            case "High metal content body":         self.state.current_system.bodies.record_attribute(BodyAttribute.high_metal_content_body, bodyID)
+                            case "Earthlike body":                  self.state.current_system.bodies.record_attribute(BodyAttribute.earth_like_world_body, bodyID)
+                            case "Ammonia world":                   self.state.current_system.bodies.record_attribute(BodyAttribute.ammonia_world_body, bodyID)
+                            case "Water world":                     self.state.current_system.bodies.record_attribute(BodyAttribute.water_world_body, bodyID)
+                            case "Sudarsky class I gas giant":      self.state.current_system.bodies.record_attribute(BodyAttribute.gas_giant_type_I, bodyID)
+                            case "Sudarsky class II gas giant":     self.state.current_system.bodies.record_attribute(BodyAttribute.gas_giant_type_II, bodyID)
+                            case "Sudarsky class III gas giant":    self.state.current_system.bodies.record_attribute(BodyAttribute.gas_giant_type_III, bodyID)
+                            case "Sudarsky class IV gas giant":     self.state.current_system.bodies.record_attribute(BodyAttribute.gas_giant_type_IV, bodyID)
+                            case "Sudarsky class V gas giant":      self.state.current_system.bodies.record_attribute(BodyAttribute.gas_giant_type_V, bodyID)
+                            case "Water giant":                     self.state.current_system.bodies.record_attribute(BodyAttribute.gas_giant_water, bodyID)
+                            case "Gas giant with water based life": self.state.current_system.bodies.record_attribute(BodyAttribute.gas_giant_water_with_life, bodyID)
+                            case "Gas giant with ammonia based life":self.state.current_system.bodies.record_attribute(BodyAttribute.gas_giant_ammonia_with_life, bodyID)
+                            case "Helium rich gas giant":           self.state.current_system.bodies.record_attribute(BodyAttribute.gas_giant_helium_rich, bodyID)
+                            case "Helium gas giant":                self.state.current_system.bodies.record_attribute(BodyAttribute.gas_giant_helium, bodyID)
+                            case _:
+                                self.print(f"Encountered unknown planet type for planet {event["BodyName"]}")
                         self.state.current_system.bodies.record_attribute(BodyAttribute.planet, bodyID)
                 self.save_state()
 
