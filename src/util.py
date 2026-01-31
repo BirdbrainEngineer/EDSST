@@ -1,5 +1,4 @@
 from pathlib import Path
-from math import sqrt
 import subprocess
 import pyperclip
 import toml
@@ -17,19 +16,14 @@ def text_to_clipboard(text: str) -> None:
     else:
         pyperclip.copy(text)
 
-
 def read_file_by_lines(file: Path) -> list[str]:
     with open(file) as f:
         return f.read().split("\n")
 
-
 def reserialize_file(path: Path, contents: list[str]) -> None:
     open(path, "w").write("\n".join(contents))
 
-def get_distance(system_a: tuple[float, float, float], system_b: tuple[float, float, float]) -> float:
-    return sqrt((system_a[0] - system_b[0])**2 + (system_a[1] - system_b[1])**2 + (system_a[2] - system_b[2])**2)
-
-def abbreviate_planet_type(planet_type: str) -> str:
+def abbreviate_planet_type(planet_type: str) -> str:    # EDSST planet type abbreviations
     match planet_type:
         case "Icy body":                                return "I"
         case "Rocky ice body":                          return "RI"

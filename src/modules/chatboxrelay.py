@@ -13,7 +13,7 @@ class ChatboxRelay(module.Module):
     })
 
     MODULE_NAME: str = "ChatboxRelay"
-    MODULE_VERSION: str = "0.0.1"
+    MODULE_VERSION: str = "0.1.0"
     STATE_TYPE = ChatboxRelayState
     state: ChatboxRelayState
     push_user_input: Callable[[asyncio.TaskGroup, str], Any]

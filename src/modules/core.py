@@ -1,6 +1,5 @@
 from enum import Enum, auto
 from src.modules.module import Module, ModuleState
-from src.util import get_distance
 import msgspec
 from prompt_toolkit.styles import Style
 import asyncio
@@ -100,16 +99,23 @@ class CoreModule(Module):
     })
 
     MODULE_NAME = "core"
-    MODULE_VERSION: str = "0.0.1"
+    MODULE_VERSION: str = "0.1.1"
     STATE_TYPE = CoreModuleState
     commander_greeted = False
+    frontier_id: str = ""
     commander_name: str = ""
+    game_version: str = ""
+    game_build: str = ""
+    is_odyssey: bool = False
+    is_horizons: bool = False
     state: CoreModuleState = CoreModuleState() # pyright: ignore[reportIncompatibleVariableOverride]
 
     # TODO: separate out different gas giant types
 
     def __init__(self) -> None:
         super().__init__()
+        if not self.state.enabled:
+            self.enable()
 
     def disable(self) -> None:
         super().disable()
@@ -141,17 +147,31 @@ class CoreModule(Module):
 
     async def process_event(self, event: Any, event_raw: str, tg: asyncio.TaskGroup) -> None:
         await super().process_event(event, event_raw, tg)
-        if self.state.event_stream_enabled: self.print(event["event"])
         bodyID = -1
-        if "BodyID" in event: bodyID = int(event["BodyID"])
+        if self.state.event_stream_enabled: 
+             self.print(event["event"])
+        if "BodyID" in event: 
+            bodyID = int(event["BodyID"])
         match event["event"]:
-            case "Commander":
-                name = str(event["Name"])
-                if not self.commander_greeted or name != self.commander_name:
-                    self.print("Welcome, Commander " + name)
-                    self.commander_name = str(name)
-                    self.commander_greeted = True
+            case "LoadGame":
+                try:
+                    self.commander_name = event["Commander"]
+                    self.frontier_id = event["FID"] if "FID" in event else ""
+                    self.game_version = str(event["gameversion"])
+                    self.game_build = str(event["build"])
+                    self.is_odyssey = event["Odyssey"]
+                    self.is_horizons = event["Horizons"]
+                except:
+                    self.print("<error>LoadGame event malformed! Could not load crucial information about the game and commander!</error>")
+                    self.print("Restart the game and try again.")
+                    self.print("Exiting.")
+                    exit("Malformed Elite: Dangerous journal log.")
+                if not self.commander_greeted:
+                    self.print(f"Welcome, Commander {self.commander_name}!")
+                self.commander_greeted = True
+
             case "Scan":
+
                 is_star = True if "StarType" in event else False
                 is_cluster = True if "Cluster" in str(event["BodyName"]) else False
                 self.state.current_system.bodies.add_body_signal(event)
@@ -169,17 +189,23 @@ class CoreModule(Module):
                     self.state.current_system.bodies.record_attribute(BodyAttribute.first_possible_footfall, bodyID)
                     if not is_cluster and not is_star:
                         self.state.current_system.bodies.record_attribute(BodyAttribute.first_possible_footfall_planet, bodyID)
-                if is_cluster:                              self.state.current_system.bodies.record_attribute(BodyAttribute.cluster, bodyID)
+                if is_cluster:                              
+                    self.state.current_system.bodies.record_attribute(BodyAttribute.cluster, bodyID)
                 else:
-                    if "Rings" in event:                    self.state.current_system.bodies.record_attribute(BodyAttribute.ringed, bodyID)
-                    if is_star:                             self.state.current_system.bodies.record_attribute(BodyAttribute.star, bodyID)
+                    if "Rings" in event:                    
+                        self.state.current_system.bodies.record_attribute(BodyAttribute.ringed, bodyID)
+                    if is_star:                             
+                        self.state.current_system.bodies.record_attribute(BodyAttribute.star, bodyID)
                     else:
-                        if event["TerraformState"]:         self.state.current_system.bodies.record_attribute(BodyAttribute.terraformable, bodyID)
-                        if event["Volcanism"]:              self.state.current_system.bodies.record_attribute(BodyAttribute.volcanic, bodyID)
-                        if event["Landable"]:               self.state.current_system.bodies.record_attribute(BodyAttribute.landable, bodyID)
+                        if event["TerraformState"]:         
+                            self.state.current_system.bodies.record_attribute(BodyAttribute.terraformable, bodyID)
+                        if event["Volcanism"]:              
+                            self.state.current_system.bodies.record_attribute(BodyAttribute.volcanic, bodyID)
+                        if event["Landable"]:               
+                            self.state.current_system.bodies.record_attribute(BodyAttribute.landable, bodyID)
                         if "AtmosphereType" in event:
                             if event["AtmosphereType"] != "None":
-                                                            self.state.current_system.bodies.record_attribute(BodyAttribute.atmospheric, bodyID)
+                                self.state.current_system.bodies.record_attribute(BodyAttribute.atmospheric, bodyID)
                         match event["PlanetClass"]:
                             case "Icy body":                self.state.current_system.bodies.record_attribute(BodyAttribute.icy_body, bodyID)
                             case "Rocky ice body":          self.state.current_system.bodies.record_attribute(BodyAttribute.rocky_icy_body, bodyID)
@@ -214,14 +240,13 @@ class CoreModule(Module):
                 self.state.current_system.bodies.record_attribute(BodyAttribute.saa_signal, bodyID)
                 self.save_state()
 
-            case "FSDJump":
+            case "FSDJump" | "CarrierJump" | "Location":
                 self.state.previous_system = self.state.current_system
                 self.state.current_system = StarSystem()
                 self.state.current_system.name = event["StarSystem"]
                 self.state.current_system.coordinates = (event["StarPos"][0], event["StarPos"][1], event["StarPos"][2])
                 self.state.current_system.address = event["SystemAddress"]
                 self.save_state()
-                distance_jumped = get_distance(self.state.previous_system.coordinates, self.state.current_system.coordinates)
-                self.print("Jumped " + str(round(distance_jumped, 2)) + "Ly to system: " + self.state.current_system.name)
+
             case _: pass
 

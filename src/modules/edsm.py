@@ -1,8 +1,5 @@
-### EDSM is broken. It is not possible to reliably send data to EDSM any more. 
-
-
-
-
+### EDSM does not receive data reliably, therefore this module will ever only be used for querying data from EDSM, not to send it there.
+# For sending data to interested parties, EDDN module is used.  
 
 
 
@@ -95,7 +92,6 @@ class EDSM(module.Module):
                 return False
             else:
                 self.print(f"Sent {len(events)} events to EDSM in {time_elapsed:.2}s.")
-                self.print("Event response codes: ", ", ".join([str(event["msgnum"]) for event in response["events"]]))
                 return True
         return True
     

@@ -7,7 +7,7 @@ from src.modules.core import CoreModule
 from src.modules.module import Module
 from src.modules.dw3densitycolumnsurvey import DW3DensityColumnSurvey
 from src.modules.chatboxrelay import ChatboxRelay
-from src.modules.edsm import EDSM
+from src.modules.eddn.eddn import EDDN
 #from src.modules.edsm import EDSM
 import src.version
 from pathlib import Path
@@ -123,7 +123,8 @@ async def main():
     modules: list[Module] = []
     core_module = CoreModule()
     modules.append(core_module)
-    modules.append(EDSM())
+    modules.append(EDDN(core_module))
+    #modules.append(EDSM())
     modules.append(FSSReporter(core_module))
     modules.append(BoxelSurvey(core_module))
     modules.append(DW3DensityColumnSurvey(core_module))
