@@ -152,8 +152,8 @@ async def main():
                 "╚════════════════════════════════════════════════════════════╝\n")
         if TESTING_MODE == TestingMode.Testing:
             print_formatted_text(HTML("<edsst_color>      ╔════════════════════════════════════════════════╗</edsst_color>\n" +
-                    "<edsst_color>      ║      !Booted in TESTING / DEBUGGING mode!      ║</edsst_color>\n" +
-                    "<edsst_color>      ╚════════════════════════════════════════════════╝</edsst_color>\n"), style=edsst_style)
+                                            "<edsst_color>      ║      !Booted in TESTING / DEBUGGING mode!      ║</edsst_color>\n" +
+                                            "<edsst_color>      ╚════════════════════════════════════════════════╝</edsst_color>\n"), style=edsst_style)
 
 asyncio.run(main())
 

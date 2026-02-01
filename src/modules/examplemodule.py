@@ -4,6 +4,7 @@ import asyncio
 from typing import Any
 
 class ExampleModuleState(module.ModuleState): # All variables in this class persist between program runs. 
+    # enabled: bool     Inherited enabled state flag. Don't override.
     example_state_entry: str = ""
 
 
@@ -11,6 +12,11 @@ class ExampleModule(module.Module):
     style = Style.from_dict({   # The KeyValue-s in this dictionary can be accessed as html tag modifiers in self.print
         "module_color": "#00ff00",              # Example: self.print(f"<module_color>Hello World.</module_color>")
     })
+    # ------------ Inherited variables ------------
+    #module_dir: Path           Path to the module data directory. This should not be changed.
+    #state_file_path: Path      Path to the module state file in the module data directory. This should not be changed.
+    #caught_up: bool            flag to know whether the program has processed all the lines in the journal, thus catching up to the current state of Elite: Dangerous
+
 
     MODULE_NAME: str = "ExampleModule"
     MODULE_VERSION: str = "?"

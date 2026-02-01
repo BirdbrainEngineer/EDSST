@@ -1,6 +1,5 @@
 from src.modules.core import CoreModule
 from src.modules.module import Module, ModuleState
-from src.util import read_file_by_lines, reserialize_file
 from prompt_toolkit.styles import Style
 import asyncio
 import math
@@ -8,7 +7,6 @@ from pathlib import Path
 from typing import Any
 
 class DW3DensityColumnSuveyState(ModuleState):
-    MAX_HEIGHT_DEVIATION: float = 10
     system_in_sequence: int = 0
     start_height: int = 0
     direction: int = 0
@@ -17,6 +15,7 @@ class DW3DensityColumnSuveyState(ModuleState):
     system_surveyed: bool = False
     survey_ongoing: bool = False
     survey_start_system: str = ""
+    logged_systems: list[str] = []
 
 class DW3DensityColumnSurvey(Module):
     style = Style.from_dict({
@@ -24,8 +23,9 @@ class DW3DensityColumnSurvey(Module):
     })
 
     MODULE_NAME = "DW3DensityColumnSurvey"
-    MODULE_VERSION: str = "0.0.3"
+    MODULE_VERSION: str = "0.0.4"
     EXTRA_ALIASES: set[str] = set(["dcs", "dc", "dw3c", "column", "densitycolumn", "densitycolumnsurvey", "dw3densitycolumnsurvey"])
+    MAX_HEIGHT_DEVIATION: float = 20
     survey_data_dir: Path = Path("")
     survey_file_path: Path = Path("")
     STATE_TYPE = DW3DensityColumnSuveyState
@@ -38,7 +38,7 @@ class DW3DensityColumnSurvey(Module):
         if not self.survey_data_dir.exists():
             self.survey_data_dir.mkdir()
         if self.state.survey_start_system:
-            self.survey_file_path = Path(self.survey_data_dir / f"{self.state.survey_start_system}")
+            self.survey_file_path = Path(self.survey_data_dir / f"{self.state.survey_start_system}.tsv")
         else:
             self.survey_file_path = Path(self.module_dir / "default.tsv")
         if not self.survey_file_path.exists():
@@ -52,7 +52,7 @@ class DW3DensityColumnSurvey(Module):
             match event["event"]:
                 case "FSDJump":
                     current_height = self.core.state.current_system.coordinates[1]
-                    if abs(current_height - self.get_expected_galactic_height()) < self.state.MAX_HEIGHT_DEVIATION:
+                    if abs(current_height - self.get_expected_galactic_height()) < self.MAX_HEIGHT_DEVIATION:
                         self.state.valid_system = True
                         self.print("System valid for survey!")
                 case "CaughtUp":
@@ -63,9 +63,24 @@ class DW3DensityColumnSurvey(Module):
         else: pass
 
     def is_valid_starting_height(self, galactic_height: float, direction: str) -> bool:
-        return True if (abs(galactic_height - 1000) < self.state.MAX_HEIGHT_DEVIATION and direction == "down") or \
-                (abs(galactic_height + 1000) < self.state.MAX_HEIGHT_DEVIATION and direction == "up") or \
-                (abs(galactic_height) < self.state.MAX_HEIGHT_DEVIATION ) else False
+        if abs(galactic_height - 1000) < self.MAX_HEIGHT_DEVIATION:
+            if direction in ("down", "descending", "-1"):
+                return True
+            else:
+                self.print("Can not start column survey with an ascending direction when starting at galactic height of 1000Ly!")
+                return False
+        elif abs(galactic_height + 1000) < self.MAX_HEIGHT_DEVIATION:
+                if direction in ("up", "ascending", "1", "+1"):
+                    return True
+                else:
+                    self.print("Can not start column survey with a descending direction when starting at galactic height of -1000Ly!")
+                    return False
+        elif abs(galactic_height) < self.MAX_HEIGHT_DEVIATION:
+            return True
+        self.print("<error>Will not start the survey - Too far from a valid startpoint!</error>")
+        self.print("Please move to a galactic height of -1000, 0, or 1000 +-" + str(self.MAX_HEIGHT_DEVIATION) + "Ly and try again!")
+        return False
+
 
     def get_expected_galactic_height(self) -> float:
         return self.state.start_height + 50 * self.state.direction * self.state.system_in_sequence
@@ -86,10 +101,10 @@ class DW3DensityColumnSurvey(Module):
                             self.print("<error>Direction parameter required to start survey!</error>")
                             return
                         if arguments[2] not in ["up", "ascending", "down", "descending", "-1", "1", "+1"]:
-                            self.print("<error>Invalid direction parameter - Must be 'up', 'ascending', 'down', or 'descending'!</error>")
+                            self.print("<error>Invalid direction parameter - Must be 'up', 'ascending', '1', '+1', 'down', 'descending' or '-1'!</error>")
                             return
                         if self.is_valid_starting_height(galactic_height, arguments[2]):
-                            self.state.direction = 1 if arguments[2] in ["up", "ascending"] else -1
+                            self.state.direction = 1 if arguments[2] in ["up", "ascending", "1", "+1"] else -1
                             self.state.valid_system = True
                             self.state.start_height = -1000 if galactic_height < -500 else 0 if galactic_height < 500 else 1000
                             self.state.system_in_sequence = 0
@@ -99,21 +114,15 @@ class DW3DensityColumnSurvey(Module):
                             self.survey_file_path.open("w")
                             self.print("<module_color>Started Density Column Survey from system: </module_color>" + self.core.state.current_system.name)
                             self.print("Please make sure to enter current system's count and max distance before continuing!")
-                            return
-                        else:
-                            self.print("<error>Will not start the survey - Too far from a valid startpoint!</error>")
-                            self.print("Please move to a galactic height of -1000, 0, or 1000 +-" + str(self.state.MAX_HEIGHT_DEVIATION) + "Ly and try again!")
-                            return
+                            self.save_state()
 
                     case "undo":
-                        survey = read_file_by_lines(self.survey_file_path)
-                        if len(survey) > 0:
-                            removed = survey.pop(0).split(sep="\t")
+                        if len(self.state.logged_systems) > 0:
+                            removed = self.state.logged_systems.pop(0).split(sep='\t')
                             self.print(f"Removed datapoint for system: {removed[0]}")
                         else:
                             self.print("No datapoints to remove!")
                             return
-                        reserialize_file(self.survey_file_path, survey)
                         self.state.system_in_sequence -= 1
                         self.state.previous_system = "UNKNOWN"
                         self.state.system_surveyed = False
@@ -122,7 +131,7 @@ class DW3DensityColumnSurvey(Module):
 
                     case "reset" | "clear":
                         self.survey_file_path.unlink(missing_ok=True)
-                        self.survey_file_path = Path(self.module_dir / "default.tsv")
+                        self.survey_file_path = Path(self.survey_data_dir / "default.tsv")
                         self.state.system_in_sequence = 0
                         self.state.previous_system = ""
                         self.state.valid_system = False
@@ -131,9 +140,18 @@ class DW3DensityColumnSurvey(Module):
                         self.state.direction = 0
                         self.state.survey_ongoing = False
                         self.state.survey_start_system = ""
+                        self.state.logged_systems.clear()
                         self.print("Cleared current survey progress.")
                         self.save_state()
                         return
+                    
+                    case "display":
+                        if self.state.survey_ongoing:
+                            self.print("Currently logged data:")
+                            for line in self.state.logged_systems:
+                                self.print(line.strip(), prefix="")
+                        else:
+                            self.print("No survey currently ongoing!")
 
                     case _:
                         if self.state.survey_ongoing:
@@ -161,7 +179,7 @@ class DW3DensityColumnSurvey(Module):
                                 return
                             self.process_datapoint(count, distance)
                         else:
-                            self.print("No ongoing survey - Please start a survey first!")
+                            self.print("Survey not started yet, or received unknown command!")
                             return
 
     def process_datapoint(self, count: int, distance: float) -> None:
@@ -185,27 +203,34 @@ class DW3DensityColumnSurvey(Module):
 {rho}\t\
 {self.core.state.current_system.coordinates[0]}\t\
 {self.core.state.current_system.coordinates[1]}\t\
-{self.core.state.current_system.coordinates[2]}"""
+{self.core.state.current_system.coordinates[2]}\n"""
         if self.state.direction == 1:
-            open(self.survey_file_path, "a").write(datapoint)
+            if self.state.start_height == -1000:
+                self.state.logged_systems.insert(0, datapoint)
+            else:
+                self.state.logged_systems.append(datapoint)
         else:
-            data: list[str] = []
-            data.append(datapoint)
-            for line in self.survey_file_path.open().readlines():
-                data.append(line)
-            reserialize_file(self.survey_file_path, data)
+            if self.state.start_height == 1000:
+                self.state.logged_systems.insert(0, datapoint)
+            else:
+                self.state.logged_systems.append(datapoint)
+        
         self.print(f"<module_color>Recorded datapoint for system: </module_color>{self.core.state.current_system.name}")
-        self.print(f"{datapoint}\n", prefix="")
+        self.print(f"{datapoint.strip()}", prefix="")
         self.state.system_in_sequence += 1
         self.state.previous_system = self.core.state.current_system.name
         self.state.system_surveyed = True
         self.state.valid_system = False
         self.save_state()
-        if self.state.system_in_sequence == 20:
+        if self.state.system_in_sequence == 21:
             self.print("<module_color>Survey completed!</module_color>\n")
+            self.survey_file_path.open("w").writelines(self.state.logged_systems)
+            self.survey_file_path = Path(self.module_dir / "default.tsv")
+            self.state.logged_systems.clear()
             self.state.system_in_sequence = 0
             self.state.previous_system = ""
             self.state.system_surveyed = False
             self.state.survey_start_system = ""
+            self.state.survey_ongoing = False
             self.save_state()
             return
