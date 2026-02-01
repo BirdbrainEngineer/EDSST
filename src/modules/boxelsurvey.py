@@ -1,4 +1,3 @@
-from msgspec import field
 from src.modules import module, edsm, core
 from src.util import text_to_clipboard
 from prompt_toolkit.styles import Style
@@ -8,8 +7,8 @@ from typing import Any
 from src.version import TESTING_MODE, TestingMode
 
 class BoxelSurveyState(module.ModuleState):
-    system_list: list[str] = field(default_factory=list)
-    ignore_systems_set: set[str] = field(default_factory=set)
+    system_list: list[str] = []
+    ignore_systems_set: set[str] = set()
     systems_to_survey: int = 0
     systems_in_boxel: int = 0
     boxel_name: str = ""
@@ -22,7 +21,7 @@ class BoxelSurvey(module.Module):
     })
 
     MODULE_NAME = "BoxelSurvey"
-    MODULE_VERSION: str = "0.1.0"
+    MODULE_VERSION: str = "0.1.1"
     EXTRA_ALIASES: set[str] = set(["boxelsurvey", "boxel", "boxels"])
     STATE_TYPE = BoxelSurveyState
     boxel_log_file_path: Path
@@ -40,18 +39,23 @@ class BoxelSurvey(module.Module):
         await super().process_event(event, tg)
         match event["event"]:
             case "FSDJump":
-                if self.caught_up:
+                if self.state.survey_ongoing:
                     self.update_survey(str(event["StarSystem"]))
+            case "CaughtUp":
+                if self.state.survey_ongoing:
+                    self.print(f"Boxel survey ongoing! Next system: <cyan>{self.state.next_system}</cyan>")
+                    text_to_clipboard(self.state.next_system)
             case _: pass
 
     async def process_user_input(self, arguments: list[str], tg: asyncio.TaskGroup) -> None:
-        if not self.caught_up:
-            return
         await super().process_user_input(arguments, tg)
+        if not self.caught_up or not self.state.enabled:
+            return
         match arguments[1]:
-            case "status":
+            case "status" | "state":
                 if self.state.survey_ongoing:
                     self.print(f"Systems left to scan: {len(self.state.system_list) - len(self.state.ignore_systems_set)}")
+                    self.print(f"Next system: <cyan>{self.state.next_system}</cyan>")
                     
                     if TESTING_MODE == TestingMode.Testing:
                         self.print("Systems visited by others:")
@@ -112,10 +116,10 @@ class BoxelSurvey(module.Module):
                         response: Any | None = await self.edsm.get_systems(self.state.system_list)
                         if response:
                             for system in response:
-                                self.state.ignore_systems_set.add(str(system["name"]))
+                                self.state.ignore_systems_set.add(str(system["name"]).lower())
                         self.state.survey_ongoing = True
                         self.state.next_system = self.state.system_list[0]
-                        if self.state.next_system in self.state.ignore_systems_set:
+                        if self.state.next_system in self.state.ignore_systems_set or self.state.next_system == self.core.state.current_system.name.lower():
                             self.update_survey(self.state.next_system)
                         else:
                             text_to_clipboard(self.state.next_system)
@@ -134,22 +138,24 @@ class BoxelSurvey(module.Module):
             case _: pass
 
     def update_survey(self, star_system: str) -> None:
-        if self.state.next_system.lower() == star_system.lower():
+        self.print(f"Updating survey with {star_system}, current system {self.state.next_system}")
+        if self.state.next_system.lower() == star_system.lower().strip():
             open(self.boxel_log_file_path, "a").write(self.state.next_system + "\n")
-            if self.state.system_list:
-                while True:
-                    self.state.next_system = self.load_next_system()
-                    if self.state.next_system in self.state.ignore_systems_set:
-                        open(self.boxel_log_file_path, "a").write(self.state.next_system + "\n")
-                        self.state.ignore_systems_set.remove(self.state.next_system)
-                        self.print(f"System <cyan>{self.state.next_system}</cyan> has already been visited by someone... Skipping.")
-                    else:
+            if len(self.state.system_list) > 0:
+                self.state.next_system = self.load_next_system()
+                while self.state.next_system in self.state.ignore_systems_set:
+                    open(self.boxel_log_file_path, "a").write(self.state.next_system + "\n")
+                    self.state.ignore_systems_set.remove(self.state.next_system)
+                    self.print(f"System <cyan>{self.state.next_system}</cyan> has already been visited by someone... Skipping.")
+                    if not self.state.system_list:
                         break
+                    self.state.next_system = self.load_next_system()
                 text_to_clipboard(self.state.next_system)
                 self.print(f"Next system: <cyan>{self.state.next_system}</cyan>")
-                return
-            self.print("<green>Survey Completed!</green>")
-            self.clear_survey()
+                self.save_state()
+            else:
+                self.print("<green>Survey Completed!</green>")
+                self.clear_survey()
 
     def load_next_system(self) -> str:
         return self.state.system_list.pop(0)
