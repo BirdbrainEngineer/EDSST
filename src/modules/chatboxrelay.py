@@ -14,7 +14,7 @@ class ChatboxRelay(module.Module):
     })
 
     MODULE_NAME: str = "ChatboxRelay"
-    MODULE_VERSION: str = "0.1.1"
+    MODULE_VERSION: str = "0.1.2"
     EXTRA_ALIASES: set[str] = set(["chatrelay", "chatboxrelay", "textrelay", "commsrelay", "chat"])
     STATE_TYPE = ChatboxRelayState
     state: ChatboxRelayState
@@ -24,14 +24,15 @@ class ChatboxRelay(module.Module):
         super().__init__(self.EXTRA_ALIASES)
         self.push_user_input = user_input_pusher
 
-    async def process_event(self, event: dict[str, Any], event_raw: str, tg: asyncio.TaskGroup) -> None:   # Events are either new journal file lines or events produced by EDSST
-        await super().process_event(event, event_raw, tg)
+    async def process_event(self, event: dict[str, Any], tg: asyncio.TaskGroup) -> None:   # Events are either new journal file lines or events produced by EDSST
+        await super().process_event(event, tg)
         match event["event"]:   # Events are currently passed as dict[str, Any]
             case "SendText": 
-                if TESTING_MODE == TestingMode.Testing: self.print(str(event))
-                if event["To"] == "local":
-                    self.print(f"{event["Message"]}", prefix="<ingame>&gt;&gt;&gt; </ingame>")
-                    await self.push_user_input(tg, event["Message"])
+                if self.caught_up:
+                    if TESTING_MODE == TestingMode.Testing: self.print(str(event))
+                    if event["To"] == "local":
+                        self.print(f"{event["Message"]}", prefix="<ingame>&gt;&gt;&gt; </ingame>")
+                        await self.push_user_input(tg, event["Message"])
             case "CaughtUp":
                 if self.state.enabled:
                     if self.state.is_listening:

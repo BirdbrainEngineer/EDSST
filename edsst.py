@@ -54,9 +54,8 @@ async def listen_for_events():
             for line in file_by_lines:
                 if not line: 
                     continue
-                event_raw = line
                 event = json.loads(line)
-                yield event, event_raw
+                yield event
     else:
         latest_journal_file_path = None
 
@@ -66,7 +65,7 @@ async def listen_for_events():
         print_formatted_text(HTML("<edsst_color>EDSST</edsst_color>: Did not find journal file.  Please confirm journal directory is set correctly in the config.toml file."), style=edsst_style)
         exit()
 
-    yield {"event": "CaughtUp"}, "{\"event\": \"CaughtUp\"}"
+    yield {"event": "CaughtUp"}
 
     file = open(latest_journal_file_path)
 
@@ -80,11 +79,10 @@ async def listen_for_events():
                 for line in file.read().strip().split("\n"):
                     if not line: 
                         continue
-                    event_raw = line
                     event = json.loads(line)
                     if event["event"] == "Shutdown":
                         print_formatted_text(HTML("<edsst_color>EDSST</edsst_color>: Detected shutdown."), style=edsst_style)
-                    yield event, event_raw
+                    yield event
             else:
                 new_latest_journal_file_path = get_latest_journal_file_path()
                 if new_latest_journal_file_path and latest_journal_file_path != new_latest_journal_file_path:
@@ -94,11 +92,11 @@ async def listen_for_events():
                     file = open(latest_journal_file_path)
 
 async def event_loop(modules: list[Module], tg: asyncio.TaskGroup):
-    async for event, event_raw in listen_for_events():
+    async for event in listen_for_events():
         for module in modules:
             if module.state.enabled or not module.caught_up:
                 try:
-                    await module.process_event(event, event_raw, tg)
+                    await module.process_event(event, tg)
                 except Exception:
                     module.print(f"Encountered an unrecoverable error:")
                     print(traceback.format_exc())
@@ -132,11 +130,12 @@ async def main():
 
     modules: list[Module] = []
     core_module = CoreModule()
+    edsm_module = EDSM()
     modules.append(core_module)
     modules.append(EDDN(core_module))
-    modules.append(EDSM())
+    modules.append(edsm_module)
     modules.append(FSSReporter(core_module))
-    modules.append(BoxelSurvey(core_module))
+    modules.append(BoxelSurvey(core_module, edsm_module))
     modules.append(DW3DensityColumnSurvey(core_module))
     modules.append(ChatboxRelay(partial(process_user_input, modules)))
     #modules.append(ExampleModule())

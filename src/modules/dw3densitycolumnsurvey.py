@@ -46,8 +46,8 @@ class DW3DensityColumnSurvey(Module):
         self.save_state()
         self.core = core
 
-    async def process_event(self, event: Any, event_raw: str, tg: asyncio.TaskGroup) -> None:
-        await super().process_event(event, event_raw,  tg)
+    async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:
+        await super().process_event(event, tg)
         if self.state.survey_ongoing:
             match event["event"]:
                 case "FSDJump":
@@ -126,7 +126,7 @@ class DW3DensityColumnSurvey(Module):
                         self.state.system_in_sequence -= 1
                         self.state.previous_system = "UNKNOWN"
                         self.state.system_surveyed = False
-                        await self.process_event({"event":"FSDJump"}, "{\"event\": \"FSDJump\"}", tg)
+                        await self.process_event({"event":"FSDJump", "StarSystem":f"{self.core.state.current_system.name}"}, tg)
                         self.save_state()
 
                     case "reset" | "clear":

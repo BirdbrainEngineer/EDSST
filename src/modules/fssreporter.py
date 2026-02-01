@@ -73,8 +73,8 @@ class FSSReporter(Module):
 
         self.print("<module_color>  ╚═══════════════════════════════════════════════════════════════════════════════════</module_color>\n", prefix="")
 
-    async def process_event(self, event: Any, event_raw: str, tg: asyncio.TaskGroup) -> None:
-        await super().process_event(event, event_raw, tg)
+    async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:
+        await super().process_event(event, tg)
         match event["event"]:
             case "FSSAllBodiesFound":
                 if not self.report_scheduled:

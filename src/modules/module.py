@@ -125,7 +125,7 @@ class Module():
         if self.state_file_path.exists():
             self.state = msgspec.json.decode(self.state_file_path.read_bytes(), type = self.STATE_TYPE)
 
-    async def process_event(self, event: Any, event_raw: str, tg: asyncio.TaskGroup) -> None:
+    async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:
         if event["event"] == "CaughtUp":
             self.caught_up = True
 

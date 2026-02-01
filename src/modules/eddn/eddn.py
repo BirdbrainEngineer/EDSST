@@ -46,8 +46,8 @@ class EDDN(module.Module):
             self.print("<error>EDDN module has been locked due to previously encountering a serious problem!</error>")
             self.disable()
 
-    async def process_event(self, event: Any, event_raw: str, tg: asyncio.TaskGroup) -> None:   # Events are either new journal file lines or events produced by EDSST
-        await super().process_event(event, event_raw, tg)
+    async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:   # Events are either new journal file lines or events produced by EDSST
+        await super().process_event(event, tg)
         if self.state.hardlock: return
         if not self.caught_up:
             return
