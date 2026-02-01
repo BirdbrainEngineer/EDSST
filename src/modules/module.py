@@ -41,16 +41,18 @@ class Module():
     style = Style.from_dict({
         "module_color": "#ffffff",
     })
-
-    MODULE_NAME: str = "UNNAMED_SURVEY"
+    MODULE_NAME: str = "UNNAMED_MODULE"
     MODULE_VERSION: str = "?"
     STATE_TYPE = ModuleState
     module_dir: Path
     state_file_path: Path
     caught_up: bool = True
     state: ModuleState
+    aliases: set[str]
 
-    def __init__(self) -> None:
+    def __init__(self, extra_aliases: set[str]) -> None:
+        self.aliases = set([f"{self.MODULE_NAME.lower()}"])
+        for alias in extra_aliases: self.aliases.add(alias.lower())
         self.state = ModuleState()
         module_versions: list[dict[str, str]] = []
         first_boot = True
@@ -115,13 +117,12 @@ class Module():
             self.save_state()
         self.print("<red>Disabled!</red>")
 
-    def save_state(self) -> None:   # Most likely this should 
+    def save_state(self) -> None:
         if not self.caught_up: return
         self.state_file_path.write_bytes(msgspec.json.encode(self.state))
 
     def load_state(self) -> None:
         if self.state_file_path.exists():
-            #self.print(f"Loading {escape(str(self.state_file_path))} with {escape(str(self.STATE_TYPE))}")
             self.state = msgspec.json.decode(self.state_file_path.read_bytes(), type = self.STATE_TYPE)
 
     async def process_event(self, event: Any, event_raw: str, tg: asyncio.TaskGroup) -> None:
@@ -129,16 +130,15 @@ class Module():
             self.caught_up = True
 
     async def process_user_input(self, arguments: list[str], tg: asyncio.TaskGroup) -> None:
-        if arguments[0] == self.MODULE_NAME.lower():
-            if len(arguments) < 2:
-                self.print("<warning>Received no commands!</warning>")
-                return
-            match arguments[1]:
-                case "enable":
-                    self.enable()
-                case "disable":
-                    self.disable()
-                case _: return
+        if len(arguments) < 2:
+            self.print("<warning>Received no commands!</warning>")
+            return
+        match arguments[1]:
+            case "enable":
+                self.enable()
+            case "disable":
+                self.disable()
+            case _: return
 
     def print(self, *values: str, sep: str = " ", end: str = "\n", prefix: str | None = None) -> None:
         if not self.caught_up: return

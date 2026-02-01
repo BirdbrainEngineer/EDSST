@@ -1,11 +1,7 @@
 from src.modules.core import BodyAttribute, CoreModule
 from src.modules.module import Module
 from src.util import abbreviate_planet_type
-
-
 from prompt_toolkit.styles import Style
-
-
 import asyncio
 from typing import Any
 
@@ -19,12 +15,13 @@ class FSSReporter(Module):
     })
 
     MODULE_NAME = "FSSReporter"
-    MODULE_VERSION: str = "0.0.1"
+    MODULE_VERSION: str = "0.0.2"
+    EXTRA_ALIASES: set[str] = set(["fss", "fssreporter", "scanreport"])
     core: CoreModule
     report_scheduled = False
 
     def __init__(self, core: CoreModule) -> None:
-        super().__init__()
+        super().__init__(self.EXTRA_ALIASES)
         self.core = core
 
     async def process_report(self, delay: float):
@@ -89,8 +86,8 @@ class FSSReporter(Module):
             case _: pass
 
     async def process_user_input(self, arguments: list[str], tg: asyncio.TaskGroup) -> None:
-        if arguments[0] in ["fss", "fssreporter", "scanreport"]:   # Currently this is the way to define extra aliases for your module
-            match arguments[1]:
-                case "report":
-                    await self.process_report(0.01)
-                case _: pass
+        await super().process_user_input(arguments, tg)
+        match arguments[1]:
+            case "report":
+                await self.process_report(0.01)
+            case _: pass

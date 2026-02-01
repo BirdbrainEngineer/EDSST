@@ -8,7 +8,7 @@ from src.modules.module import Module
 from src.modules.dw3densitycolumnsurvey import DW3DensityColumnSurvey
 from src.modules.chatboxrelay import ChatboxRelay
 from src.modules.eddn.eddn import EDDN
-#from src.modules.edsm import EDSM
+from src.modules.edsm import EDSM
 import src.version
 from pathlib import Path
 from typing import Iterator
@@ -19,11 +19,19 @@ import asyncio
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 import traceback
+from src.version import TESTING_MODE, TestingMode
+from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.styles import Style
+from prompt_toolkit import print_formatted_text
 
 
 config = toml.load("config.toml")
 
 log_directory = Path(config["elite_dangerous_journal_path"])
+
+edsst_style = Style.from_dict({
+    "edsst_color": "#ff8000",
+})
 
 def get_latest_journal_file_path() -> None | Path:
     log_paths: Iterator[Path] = log_directory.glob("Journal.*.log")
@@ -53,9 +61,9 @@ async def listen_for_events():
         latest_journal_file_path = None
 
     if latest_journal_file_path:
-        print("EDSST: Synchronized to journal file - " + str(latest_journal_file_path.name))
+        print_formatted_text(HTML("<edsst_color>EDSST</edsst_color>: Synchronized to journal file - " + str(latest_journal_file_path.name)), style=edsst_style)
     else:
-        print("EDSST: Did not find journal file.  Please confirm journal directory is set correctly in the config.toml file.")
+        print_formatted_text(HTML("<edsst_color>EDSST</edsst_color>: Did not find journal file.  Please confirm journal directory is set correctly in the config.toml file."), style=edsst_style)
         exit()
 
     yield {"event": "CaughtUp"}, "{\"event\": \"CaughtUp\"}"
@@ -75,12 +83,12 @@ async def listen_for_events():
                     event_raw = line
                     event = json.loads(line)
                     if event["event"] == "Shutdown":
-                        print("EDSST: Detected shutdown.")
+                        print_formatted_text(HTML("<edsst_color>EDSST</edsst_color>: Detected shutdown."), style=edsst_style)
                     yield event, event_raw
             else:
                 new_latest_journal_file_path = get_latest_journal_file_path()
                 if new_latest_journal_file_path and latest_journal_file_path != new_latest_journal_file_path:
-                    print(f"EDSST: Synchronized to journal log file: {new_latest_journal_file_path.name}")
+                    print_formatted_text(HTML(f"<edsst_color>EDSST<edsst_color>: Synchronized to journal log file: {new_latest_journal_file_path.name}"), style=edsst_style)
                     latest_journal_file_path = new_latest_journal_file_path
                     file.close()
                     file = open(latest_journal_file_path)
@@ -100,7 +108,8 @@ async def process_user_input(modules: list[Module], tg: asyncio.TaskGroup, user_
     arguments = user_input.lower().split()
     if arguments:
         for module in modules:
-            await module.process_user_input(arguments, tg) 
+            if arguments[0] in list(module.aliases):
+                await module.process_user_input(arguments, tg) 
 
 
 async def input_loop(modules: list[Module], event_loop_task: asyncio.Task, tg: asyncio.TaskGroup) -> None: # pyright: ignore[reportUnknownParameterType, reportMissingTypeArgument]
@@ -125,7 +134,7 @@ async def main():
     core_module = CoreModule()
     modules.append(core_module)
     modules.append(EDDN(core_module))
-    #modules.append(EDSM())
+    modules.append(EDSM())
     modules.append(FSSReporter(core_module))
     modules.append(BoxelSurvey(core_module))
     modules.append(DW3DensityColumnSurvey(core_module))
@@ -141,6 +150,10 @@ async def main():
         print("\n╔════════════════════════════════════════════════════════════╗\n" +
                 "║ Elite: Dangerous Stellar Survey Tools successfully booted! ║\n" +
                 "╚════════════════════════════════════════════════════════════╝\n")
+        if TESTING_MODE == TestingMode.Testing:
+            print_formatted_text(HTML("<edsst_color>      ╔════════════════════════════════════════════════╗</edsst_color>\n" +
+                    "<edsst_color>      ║      !Booted in TESTING / DEBUGGING mode!      ║</edsst_color>\n" +
+                    "<edsst_color>      ╚════════════════════════════════════════════════╝</edsst_color>\n"), style=edsst_style)
 
 asyncio.run(main())
 

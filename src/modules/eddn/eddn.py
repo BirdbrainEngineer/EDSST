@@ -29,7 +29,8 @@ class EDDN(module.Module):
     })
 
     MODULE_NAME: str = "EDDN"
-    MODULE_VERSION: str = "0.0.3"
+    MODULE_VERSION: str = "0.0.4"
+    EXTRA_ALIASES: set[str] = set(["eddn", "eddnintegration", "eddnsender"])
     error_dump_path: Path
     STATE_TYPE = EDDNState     # If your module has its own state class, then this has to be set to it. 
     state: EDDNState = EDDNState()
@@ -38,7 +39,7 @@ class EDDN(module.Module):
 
 
     def __init__(self, coreModule: core.CoreModule) -> None:
-        super().__init__()
+        super().__init__(self.EXTRA_ALIASES)
         self.error_dump_path = Path(self.module_dir / "errordump.json")
         self.core = coreModule
         if self.state.hardlock:
@@ -63,20 +64,16 @@ class EDDN(module.Module):
                 case _: pass
         
     async def process_user_input(self, arguments: list[str], tg: asyncio.TaskGroup) -> None:
-        if arguments[0] in ["eddn", "eddnintegration", "eddnsender"]:
-            if self.state.hardlock:
-                self.print("<error>EDDN module has been locked due to previously encountering a serious problem.</error>")
-                self.print("<warning>Check whether there is a newer version of the module available!</warning>")
-                self.print("If you think the module got locked mistakenly, then to remove the lock, open:")
-                self.print("edsst/modules_data/eddn/edd_state")
-                self.print("and change value for <green>'hardlock'</green> to <blue>'False'</blue>. Then restart EDSST.")
-                self.disable()
-            match arguments[1]:
-                case "enable":
-                    self.enable()
-                case "disable":
-                    self.disable()
-                case _: pass
+        await super().process_user_input(arguments, tg)
+        if self.state.hardlock:
+            self.print("<error>EDDN module has been locked due to previously encountering a serious problem.</error>")
+            self.print("<warning>Check whether there is a newer version of the module available!</warning>")
+            self.print("If you think the module got locked mistakenly, then to remove the lock, open:")
+            self.print("edsst/modules_data/eddn/edd_state")
+            self.print("and change value for <green>'hardlock'</green> to <blue>'False'</blue>. Then restart EDSST.")
+            self.disable()
+        match arguments[1]:
+            case _: pass
 
     async def post_scanbarycentre(self, event: dict[str, Any]) -> None:
         data: dict[str, Any] = {
@@ -107,7 +104,6 @@ class EDDN(module.Module):
             "SystemName":       self.core.state.current_system.name if self.core.state.current_system.name == event["SystemName"] else None,
             "StarPos":          [self.core.state.current_system.coordinates[0], self.core.state.current_system.coordinates[1], self.core.state.current_system.coordinates[2]],
             "SystemAddress":    self.core.state.current_system.address if self.core.state.current_system.address == event["SystemAddress"] else None,
-            #"Progress":         event["Progress"],
             "BodyCount":        event["BodyCount"],
             "NonBodyCount":     event["NonBodyCount"],
         }

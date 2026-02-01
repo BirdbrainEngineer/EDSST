@@ -13,7 +13,8 @@ class BoxelSurvey(Module):
     })
 
     MODULE_NAME = "BoxelSurvey"
-    MODULE_VERSION: str = "0.0.1"
+    MODULE_VERSION: str = "0.0.2"
+    EXTRA_ALIASES: set[str] = set(["boxelsurvey", "boxel", "boxels"])
     boxel_log_file_path: Path
     system_list_file_path: Path
     system_list: list[str]
@@ -21,7 +22,7 @@ class BoxelSurvey(Module):
     core: Module
 
     def __init__(self, core: Module) -> None:
-        super().__init__()
+        super().__init__(self.EXTRA_ALIASES)
         self.boxel_log_file_path = self.module_dir / Path("boxel_log")
         self.system_list_file_path = self.module_dir / Path("boxel_survey_system_list")
         self.core = core
@@ -42,6 +43,9 @@ class BoxelSurvey(Module):
                     text_to_clipboard(self.next_system)
                     self.print("Next system: " + self.next_system)
             case _: pass
+
+    async def process_user_input(self, arguments: list[str], tg: asyncio.TaskGroup) -> None:
+        await super().process_user_input(arguments, tg)
 
     def load_next_system(self) -> str:
         return self.system_list.pop(0)

@@ -12,5 +12,6 @@ wheels/
 config.toml
 module_versions.json
 modules/
+modules_data
 !src/modules
 test.json

@@ -108,7 +108,8 @@ class CoreModule(Module):
     })
 
     MODULE_NAME = "core"
-    MODULE_VERSION: str = "0.2.0"
+    MODULE_VERSION: str = "0.2.1"
+    EXTRA_ALIASES: set[str] = set(["core", "main", "base", "edsst"])
     STATE_TYPE = CoreModuleState
     commander_greeted = False
     frontier_id: str = ""
@@ -122,7 +123,7 @@ class CoreModule(Module):
     # TODO: separate out different gas giant types
 
     def __init__(self) -> None:
-        super().__init__()
+        super().__init__(self.EXTRA_ALIASES)
         if not self.state.enabled:
             self.enable()
 
@@ -132,27 +133,27 @@ class CoreModule(Module):
         self.print("<error>Consider re-enabling, unless you really know what you are doing!</error>")
 
     async def process_user_input(self, arguments: list[str], tg: asyncio.TaskGroup) -> None:
-        if arguments[0] in ["core", "main", "base", "edsst"]:
-            match arguments[1]:
-                case "eventstream":
-                    if len(arguments) < 3: pass
-                    match arguments[2]:
-                        case "enable" | "on":
-                            if self.state.event_stream_enabled:
-                                self.print("<yellow>Display of Event Stream already enabled!</yellow>")
-                            else:
-                                self.state.event_stream_enabled = True
-                                self.save_state()
-                                self.print("Event Stream is now displayed.")
-                        case "disable" | "off":
-                            if not self.state.event_stream_enabled:
-                                self.print("<yellow>Display of Event Stream already disabled!</yellow>")
-                            else:
-                                self.state.event_stream_enabled = False
-                                self.save_state()
-                                self.print("Event Stream is no longer displayed.")
-                        case _: pass
-                case _: await super().process_user_input(arguments, tg)
+        await super().process_user_input(arguments, tg)
+        match arguments[1]:
+            case "eventstream":
+                if len(arguments) < 3: pass
+                match arguments[2]:
+                    case "enable" | "on":
+                        if self.state.event_stream_enabled:
+                            self.print("<yellow>Display of Event Stream already enabled!</yellow>")
+                        else:
+                            self.state.event_stream_enabled = True
+                            self.save_state()
+                            self.print("Event Stream is now displayed.")
+                    case "disable" | "off":
+                        if not self.state.event_stream_enabled:
+                            self.print("<yellow>Display of Event Stream already disabled!</yellow>")
+                        else:
+                            self.state.event_stream_enabled = False
+                            self.save_state()
+                            self.print("Event Stream is no longer displayed.")
+                    case _: pass
+            case _: await super().process_user_input(arguments, tg)
 
     async def process_event(self, event: Any, event_raw: str, tg: asyncio.TaskGroup) -> None:
         await super().process_event(event, event_raw, tg)
