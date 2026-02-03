@@ -86,7 +86,7 @@ async def listen_for_events():
             else:
                 new_latest_journal_file_path = get_latest_journal_file_path()
                 if new_latest_journal_file_path and latest_journal_file_path != new_latest_journal_file_path:
-                    print_formatted_text(HTML(f"<edsst_color>EDSST<edsst_color>: Synchronized to journal log file: {new_latest_journal_file_path.name}"), style=edsst_style)
+                    print_formatted_text(HTML(f"<edsst_color>EDSST</edsst_color>: Synchronized to journal log file: {new_latest_journal_file_path.name}"), style=edsst_style)
                     latest_journal_file_path = new_latest_journal_file_path
                     file.close()
                     file = open(latest_journal_file_path)

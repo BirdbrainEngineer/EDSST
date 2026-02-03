@@ -57,7 +57,7 @@ class Bodies(msgspec.Struct):
     bodies: dict[int, dict[str, Any]] = msgspec.field(default_factory=dict) # pyright: ignore[reportUnknownVariableType]
     bodies_by_attribute: dict[BodyAttribute, set[int]] = msgspec.field(default_factory=lambda: {attribute: set() for attribute in BodyAttribute})
 
-    def get_bodies_by_attribute(self, *args: BodyAttribute, sorted: bool = False):
+    def get_bodies_by_attribute(self, *args: BodyAttribute, sorted: bool = False) -> list[dict[str, Any]]:  # Effectively "OR" operation on attributes
         query_set: set[int] = set()
         for attribute in args:
             query_set = query_set | self.bodies_by_attribute[attribute]
@@ -74,7 +74,7 @@ class Bodies(msgspec.Struct):
             self.bodies[body_id] = {}
         return self.bodies[body_id]
 
-    def get_bodies_by_id(self, body_ids: list[int]):
+    def get_bodies_by_id(self, body_ids: list[int]) -> list[dict[str, Any]]:
         result: list[dict[str, Any]] = []
         for id in body_ids:
             result.append(self.get_body_by_id(id))
@@ -108,7 +108,7 @@ class CoreModule(Module):
     })
 
     MODULE_NAME = "core"
-    MODULE_VERSION: str = "0.2.1"
+    MODULE_VERSION: str = "0.3.0"
     EXTRA_ALIASES: set[str] = set(["core", "main", "base", "edsst"])
     STATE_TYPE = CoreModuleState
     commander_greeted = False
@@ -237,7 +237,6 @@ class CoreModule(Module):
                             case _:
                                 self.print(f"Encountered unknown planet type for planet {event["BodyName"]}")
                         self.state.current_system.bodies.record_attribute(BodyAttribute.planet, bodyID)
-                self.save_state()
 
             case "FSSBodySignals":
                 self.state.current_system.bodies.add_body_signal(event)
@@ -248,16 +247,16 @@ class CoreModule(Module):
                         case "$SAA_SignalType_Guardian;":   self.state.current_system.bodies.record_attribute(BodyAttribute.guardians, bodyID)
                         case "$SAA_SignalType_Thargoid;":   self.state.current_system.bodies.record_attribute(BodyAttribute.thargoids, bodyID)
                         case _: pass
-                self.save_state()
 
             case "SAAScanComplete":
                 self.state.current_system.bodies.add_body_signal(event)
                 self.state.current_system.bodies.record_attribute(BodyAttribute.saa_scan, bodyID)
-                self.save_state()
 
             case "SAASignalsFound":
                 self.state.current_system.bodies.add_body_signal(event)
                 self.state.current_system.bodies.record_attribute(BodyAttribute.saa_signal, bodyID)
+
+            case "FSSAllBodiesFound":
                 self.save_state()
 
             case "FSDJump" | "CarrierJump" | "Location":
@@ -266,6 +265,9 @@ class CoreModule(Module):
                 self.state.current_system.name = event["StarSystem"]
                 self.state.current_system.coordinates = (event["StarPos"][0], event["StarPos"][1], event["StarPos"][2])
                 self.state.current_system.address = event["SystemAddress"]
+                self.save_state()
+
+            case "Shutdown":
                 self.save_state()
 
             case _: pass

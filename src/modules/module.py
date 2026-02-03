@@ -12,6 +12,7 @@ from typing import Any
 MODULES_DATA_PATH = Path("modules_data")
 
 global_style = Style.from_dict({
+    "edsst_color": "#ff8000",
     "error": "#ff4040",
     "warning": "#ffff80",
     "red": "#ff0000",
@@ -53,7 +54,7 @@ class Module():
     def __init__(self, extra_aliases: set[str]) -> None:
         self.aliases = set([f"{self.MODULE_NAME.lower()}"])
         for alias in extra_aliases: self.aliases.add(alias.lower())
-        self.state = ModuleState()
+        self.state = self.STATE_TYPE()
         module_versions: list[dict[str, str]] = []
         first_boot = True
         version_changed = False
