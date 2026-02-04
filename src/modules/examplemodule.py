@@ -4,7 +4,7 @@ import asyncio
 from typing import Any
 
 class ExampleModuleState(module.ModuleState): # All variables in this class persist between program runs. 
-    # enabled: bool     Inherited enabled state flag. Don't override.
+    # enabled: bool     Inherited enabled state flag. Don't override unless you know what you are doing...
     example_state_entry: str = ""
 
 
@@ -13,17 +13,16 @@ class ExampleModule(module.Module):
         "module_color": "#00ff00",              # Example: self.print(f"<module_color>Hello World.</module_color>")
     })
     # ------------ Inherited variables ------------
-    #module_dir: Path           Path to the module data directory. This should not be changed.
-    #state_file_path: Path      Path to the module state file in the module data directory. This should not be changed.
-    #caught_up: bool            flag to know whether the program has processed all the lines in the journal, thus catching up to the current state of Elite: Dangerous
-
-
+    #module_dir: Path           Path to the module data directory. This should not be changed unless you know what you are doing...
+    #state_file_path: Path      Path to the module state file in the module data directory. This should not be changed unless you know what you are doing...
+    #caught_up: bool            flag to know whether the program has processed all the previous lines in the latest journal
+    # ------------ Situationally required variables ------------
+    EXTRA_ALIASES: set[str] = set(["moduleAlias", "moduleextraalias", "ThirdAlias"])  # Aliases are case insensitive.
+    STATE_TYPE = ExampleModuleState     # If your module has its own state class, then this has to be set to it. 
+    state: ExampleModuleState = ExampleModuleState()    # If your module has its own state class, then it has to be initialized here. # pyright: ignore[reportIncompatibleVariableOverride]
+    # ------------ Required variables ------------
     MODULE_NAME: str = "ExampleModule"
     MODULE_VERSION: str = "?"
-    EXTRA_ALIASES: set[str] = set(["moduleextraalias", "Second_Alias"])  # Aliases are case insensitive.
-    STATE_TYPE = ExampleModuleState     # If your module has its own state class, then this has to be set to it. 
-    state: ExampleModuleState = ExampleModuleState() # pyright: ignore[reportIncompatibleVariableOverride]
-    #module_dir: Path   - It is not recommended to change the default module directory path, but it is possible, if you want to do so for whatever reason.
 
     def __init__(self) -> None:
         super().__init__(self.EXTRA_ALIASES) # It is *highly* recommended to call 'super().__init__(self.EXTRA_ALIASES)' before your own initialization code. 
@@ -37,10 +36,9 @@ class ExampleModule(module.Module):
 
     async def process_user_input(self, arguments: list[str], tg: asyncio.TaskGroup) -> None:
         await super().process_user_input(arguments, tg)
-        if arguments[0] in ["examplemodule", "examplesurvey", "example"]:   # Currently this is the way to define extra aliases for your module
-            match arguments[1]:
-                case "echo":
-                    if len(arguments) < 2: return
-                    self.state.example_state_entry = " ".join(iter(str(arguments[2:])))
-                    self.print(f"{self.state.example_state_entry}", prefix="<module_color>echo</module_color>: ")
-                case _: pass
+        match arguments[1]:
+            case "echo":
+                if len(arguments) < 2: return
+                self.state.example_state_entry = " ".join(iter(str(arguments[2:])))
+                self.print(f"{self.state.example_state_entry}", prefix="<module_color>echo</module_color>: ")
+            case _: pass
