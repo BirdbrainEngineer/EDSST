@@ -6,6 +6,7 @@ from src.util import LOGS_DIRECTORY, get_distance
 from pathlib import Path
 import json
 
+POSSIBLE_MAX_JUMP_RANGE: float = 111
 
 class DensityNavRouteSurvey(module.Module): 
     style = Style.from_dict({
@@ -13,9 +14,10 @@ class DensityNavRouteSurvey(module.Module):
     })
     EXTRA_ALIASES: set[str] = set(["dnav", "navd", "densitynav", "navdensity", "navroutedensity"])
     MODULE_NAME: str = "DensityNavRouteSurvey"
-    MODULE_VERSION: str = "0.0.1"
+    MODULE_VERSION: str = "0.0.2"
     navroute_path: Path = Path(LOGS_DIRECTORY / "NavRoute.json")
     saved_navroutes_path: Path
+    
 
     def __init__(self) -> None:
         super().__init__(self.EXTRA_ALIASES)
@@ -40,6 +42,9 @@ class DensityNavRouteSurvey(module.Module):
                         system_a_coords = system_b_coords
                         system_b_coords = (float(leg["StarPos"][0]), float(leg["StarPos"][1]), float(leg["StarPos"][2]))
                         distance = get_distance(system_a_coords, system_b_coords)
+                        if distance > POSSIBLE_MAX_JUMP_RANGE:
+                            self.print("Detected a boosted jump, rejecting route! Please disable jet cone boosts!")
+                            return
                         max_distance = distance if distance > max_distance else max_distance
                     navroute["MaxRange"] = max_distance
                     with self.saved_navroutes_path.open("a") as f:
@@ -55,4 +60,6 @@ class DensityNavRouteSurvey(module.Module):
                 self.print("You <green>ARE</green> in \"Fastest Routes\" mode.")
                 self.print("You are <red>NOT</red> using jet cone boosts.")
                 self.print("You do <red>NOT</red> have any filters set for the route.")
+            case "disable" | "stop" | "deafen":
+                self.disable()
             case _: pass
