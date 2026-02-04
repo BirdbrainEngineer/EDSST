@@ -2,11 +2,13 @@ from pathlib import Path
 import subprocess
 import pyperclip
 import toml
-from enum import Enum, auto
+from enum import Enum#, auto
 import math
 
 
 config = toml.load("config.toml")
+
+LOGS_DIRECTORY = Path(config["elite_dangerous_journal_path"])
 
 WL_COPY_BIN_PATH: None | Path = Path(config["wl_copy_bin_path"]) if "wl_copy_bin_path" in config else None
 
@@ -96,7 +98,7 @@ def distance_from_parent_ls(semi_major_axis: float, eccentricity: float, mean_an
     tolerance = 1e-10
     max_iterations = 100
     
-    for i in range(max_iterations):
+    for i in range(max_iterations): # pyright: ignore[reportUnusedVariable]
         f = eccentric_anomaly - eccentricity * math.sin(eccentric_anomaly) - mean_anomaly_radians
         f_prime = 1 - eccentricity * math.cos(eccentric_anomaly)
         E_new = eccentric_anomaly - f / f_prime

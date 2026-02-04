@@ -50,7 +50,7 @@ class Pellebantus(Species):
     min_max_temperature: tuple[int, int] = (190, 195)
     planet_types: list[PlanetType] = [PlanetType.R, PlanetType.HMC]
 
-class Pumice(Species):
+class Pumice(Species):  # possibly overrestricted!
     value: int = 3156300
     name: str = "Pumice"
     code: str = "OSSPUM"

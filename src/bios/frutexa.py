@@ -52,7 +52,7 @@ class Flabellum(Species):
 class Flammasis(Species):
     value: int = 10326000
     name: str = "Flammasis"
-    code: str = "FRUFLA"
+    code: str = "FRUFLM"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.NH3]
     planet_types: list[PlanetType] = [PlanetType.R]
 

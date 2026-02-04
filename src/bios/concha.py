@@ -51,3 +51,9 @@ class Renibus(Species):
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R, AtmosphereType.H2O, AtmosphereType.H2O_R]
     min_max_temperature: tuple[int, int] = (180, 195)
     planet_types: list[PlanetType] = [PlanetType.R, PlanetType.HMC]
+
+    def check_viability(self, star_system: Bodies, planet: dict[str, Any]) -> bool:
+        if AtmosphereType(planet["AtmosphereType"]) in (AtmosphereType.H2O, AtmosphereType.H2O_R):
+            return True
+        else:
+            return super().check_viability(star_system, planet)

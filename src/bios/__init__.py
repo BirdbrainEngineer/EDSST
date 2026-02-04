@@ -41,7 +41,7 @@ taxon: list[Genus] = [
     Recepta(),
     SinuousTuber(),
     Stratum(),
-    Tubas(),
+    Tubus(),
     Tussock(),
 ]
 

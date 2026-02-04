@@ -73,7 +73,7 @@ class Paleas(Species):
     value: int = 1362000
     name: str = "Paleas"
     code: str = "STRPAL"
-    atmosphere_types: list[AtmosphereType] = [AtmosphereType.NH3, AtmosphereType.H2O, AtmosphereType.H2O_R]
+    atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R, AtmosphereType.NH3, AtmosphereType.H2O, AtmosphereType.H2O_R]
     min_max_temperature: tuple[int, int] = (165, 165)
     planet_types: list[PlanetType] = [PlanetType.R]
 

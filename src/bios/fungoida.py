@@ -27,17 +27,14 @@ class Gelata(Species):
     value: int = 3330300
     name: str = "Gelata"
     code: str = "FUNGEL"
-    atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R, AtmosphereType.H2O]
+    atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R, AtmosphereType.H2O, AtmosphereType.H2O_R]
     min_max_temperature: tuple[int, int] = (180, 195)
 
     def check_viability(self, star_system: Bodies, planet: dict[str, Any]) -> bool:
-        if super().check_viability(star_system, planet):
+        if AtmosphereType(planet["AtmosphereType"]) in (AtmosphereType.H2O, AtmosphereType.H2O_R):
             return True
         else:
-            if planet["AtmosphereType"] == "Water":
-                return True
-            else:
-                return False
+            return super().check_viability(star_system, planet)
 
 class Setisis(Species):
     value: int = 1670100
@@ -49,14 +46,11 @@ class Stabitis(Species):
     value: int = 2680300
     name: str = "Stabitis"
     code: str = "FUNSTA"
-    atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R, AtmosphereType.H2O]
+    atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R, AtmosphereType.H2O, AtmosphereType.H2O_R]
     min_max_temperature: tuple[int, int] = (180, 195)
 
     def check_viability(self, star_system: Bodies, planet: dict[str, Any]) -> bool:
-        if super().check_viability(star_system, planet):
+        if AtmosphereType(planet["AtmosphereType"]) in (AtmosphereType.H2O, AtmosphereType.H2O_R):
             return True
         else:
-            if planet["AtmosphereType"] == "Water":
-                return True
-            else:
-                return False
+            return super().check_viability(star_system, planet)

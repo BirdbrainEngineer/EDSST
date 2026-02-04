@@ -9,4 +9,4 @@ class TestingMode(Enum):
     Testing = auto()
     Release = auto()
 
-TESTING_MODE: TestingMode = TestingMode.Release
+TESTING_MODE: TestingMode = TestingMode.Testing

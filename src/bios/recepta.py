@@ -40,6 +40,5 @@ class Umbrux(Species):
     value: int = 12934900
     name: str = "Umbrux"
     code: str = "RECUMB"
-    planet_types: list[PlanetType] = [PlanetType.I, PlanetType.RI, PlanetType.R, PlanetType.HMC]
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.SO2]
 

@@ -23,11 +23,12 @@ from src.version import TESTING_MODE, TestingMode
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.styles import Style
 from prompt_toolkit import print_formatted_text
+from src.util import LOGS_DIRECTORY
 
 
 config = toml.load("config.toml")
 
-log_directory = Path(config["elite_dangerous_journal_path"])
+log_directory = LOGS_DIRECTORY
 
 edsst_style = Style.from_dict({
     "edsst_color": "#ff8000",

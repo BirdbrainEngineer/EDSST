@@ -51,5 +51,7 @@ class Vermis(Species):
     value: int = 16202800
     name: str = "Vermis"
     code: str = "CACVER"
-    atmosphere_types: list[AtmosphereType] = [AtmosphereType.H2O]
+    atmosphere_types: list[AtmosphereType] = [AtmosphereType.H2O, AtmosphereType.H2O_R]
     planet_types: list[PlanetType] = [PlanetType.R, PlanetType.HMC]
+
+    

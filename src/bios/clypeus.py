@@ -18,10 +18,7 @@ class Clypeus(Genus):
 
     def list_possible_species(self, star_system: Bodies, planet: dict[str, Any]) -> list[Species]:
         if self.check_if_gravity_less_than(planet, 0.27):
-            if PlanetType(planet["PlanetClass"]) in [PlanetType.HMC, PlanetType.R]:
-                return super().list_possible_species(star_system, planet)
-            else:
-                return []
+            return super().list_possible_species(star_system, planet)
         else:
             return []
         
@@ -30,9 +27,15 @@ class Lacrimam(Species):
     value: int = 8418000
     name: str = "Lacrimam"
     code: str = "CLYLAC"
-    atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.H2O]
+    atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R, AtmosphereType.H2O_R, AtmosphereType.H2O]
     min_max_temperature: tuple[int, int] = (190, 190)
     planet_types: list[PlanetType] = [PlanetType.R, PlanetType.HMC]
+
+    def check_viability(self, star_system: Bodies, planet: dict[str, Any]) -> bool:
+        if AtmosphereType(planet["AtmosphereType"]) in (AtmosphereType.H2O, AtmosphereType.H2O_R):
+            return True
+        else:
+            return super().check_viability(star_system, planet)
 
 class Margaritus(Species):
     value: int = 11873200
@@ -41,6 +44,12 @@ class Margaritus(Species):
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.H2O]
     min_max_temperature: tuple[int, int] = (190, 190)
     planet_types: list[PlanetType] = [PlanetType.R, PlanetType.HMC]
+
+    def check_viability(self, star_system: Bodies, planet: dict[str, Any]) -> bool:
+        if AtmosphereType(planet["AtmosphereType"]) in (AtmosphereType.H2O, AtmosphereType.H2O_R):
+            return True
+        else:
+            return super().check_viability(star_system, planet)
 
 class Speculumi(Species):
     value: int = 16202800
@@ -51,7 +60,10 @@ class Speculumi(Species):
     planet_types: list[PlanetType] = [PlanetType.R, PlanetType.HMC]
 
     def check_viability(self, star_system: Bodies, planet: dict[str, Any]) -> bool:
-        if distance_from_parent_ls(planet["SemiMajorAxis"], planet["Eccentricity"], planet["MeanAnomaly"]) > 2500:
-            return True
+        if planet["DistanceFromArrivalLS"] > 2500:
+            if AtmosphereType(planet["AtmosphereType"]) in (AtmosphereType.H2O, AtmosphereType.H2O_R):
+                return True
+            else:
+                return super().check_viability(star_system, planet)
         else:
             return False

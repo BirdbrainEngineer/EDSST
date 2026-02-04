@@ -24,7 +24,7 @@ class Pluma(Species):
     value: int = 6284600
     name: str = "Pluma"
     code: str = "ELEPLU"
-    atmosphere_types: list[AtmosphereType] = [AtmosphereType.He, AtmosphereType.Ne, AtmosphereType.Ar]
+    atmosphere_types: list[AtmosphereType] = [AtmosphereType.He, AtmosphereType.He_R, AtmosphereType.Ne, AtmosphereType.Ne_R, AtmosphereType.Ar_R, AtmosphereType.Ar]
     planet_types: list[PlanetType] = [PlanetType.I]
     allowed_startypes: list[str] = ["a", "o", "b", "black hole", "d", "da", "dab", "dao", "dav", "daz", "db", "dbv", "dc", "dcv", "do", "dov", "dq", "dx"]
     disallowed_luminosities: list[str] = ["vi", "vii"]
@@ -48,5 +48,4 @@ class Radialem(Species):
     value: int = 6284600
     name: str = "Radialem"
     code: str = "ELERAD"
-    atmosphere_types: list[AtmosphereType] = [AtmosphereType.He, AtmosphereType.Ne, AtmosphereType.Ar]
-    planet_types: list[PlanetType] = [PlanetType.I]
+    atmosphere_types: list[AtmosphereType] = [AtmosphereType.He, AtmosphereType.He_R, AtmosphereType.Ne, AtmosphereType.Ne_R, AtmosphereType.Ar_R, AtmosphereType.Ar]

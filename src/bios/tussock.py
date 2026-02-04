@@ -28,7 +28,7 @@ class Tussock(Genus):
         self.species.append(Virgam())
     
     def list_possible_species(self, star_system: Bodies, planet: dict[str, Any]) -> list[Species]:
-        if PlanetType(planet["PlanetClass"]) == PlanetType.R:
+        if self.check_if_gravity_less_than(planet, 0.27):
             return super().list_possible_species(star_system, planet)
         else:
             return []
@@ -39,12 +39,14 @@ class Albata(Species):
     code: str = "TUSALB"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R]
     min_max_temperature: tuple[int, int] = (175, 180)
+    planet_types: list[PlanetType] = [PlanetType.R]
 
 class Capillum(Species):
     value: int = 7025800
     name: str = "Capillum"
     code: str = "TUSCAP"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.CH4, AtmosphereType.CH4_R, AtmosphereType.Ar, AtmosphereType.Ar_R]
+    planet_types: list[PlanetType] = [PlanetType.R]
 
 class Caputus(Species):
     value: int = 3252500
@@ -52,24 +54,28 @@ class Caputus(Species):
     code: str = "TUSCPT"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R]
     min_max_temperature: tuple[int, int] = (180, 190)
+    planet_types: list[PlanetType] = [PlanetType.R]
 
 class Catena(Species):
     value: int = 1766600
     name: str = "Catena"
     code: str = "TUSCAT"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.NH3]
+    planet_types: list[PlanetType] = [PlanetType.R]
 
 class Cultro(Species):
     value: int = 1766600
     name: str = "Cultro"
     code: str = "TUSCUL"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.NH3]
+    planet_types: list[PlanetType] = [PlanetType.R]
 
 class Divisa(Species):
     value: int = 1766600
     name: str = "Divisa"
     code: str = "TUSDIV"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.NH3]
+    planet_types: list[PlanetType] = [PlanetType.R]
 
 class Ignis(Species):
     value: int = 1849000
@@ -77,6 +83,7 @@ class Ignis(Species):
     code: str = "TUSIGN"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R]
     min_max_temperature: tuple[int, int] = (160, 170)
+    planet_types: list[PlanetType] = [PlanetType.R]
 
 class Pennata(Species):
     value: int = 5853800
@@ -84,6 +91,7 @@ class Pennata(Species):
     code: str = "TUSPEN"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R]
     min_max_temperature: tuple[int, int] = (145, 155)
+    planet_types: list[PlanetType] = [PlanetType.R]
 
 class Pennatis(Species):
     value: int = 1000000
@@ -91,6 +99,7 @@ class Pennatis(Species):
     code: str = "TUSPTS"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R]
     min_max_temperature: tuple[int, int] = (-195, -195)
+    planet_types: list[PlanetType] = [PlanetType.R, PlanetType.HMC]
 
 class Propagito(Species):
     value: int = 1000000
@@ -98,6 +107,7 @@ class Propagito(Species):
     code: str = "TUSPRO"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R]
     min_max_temperature: tuple[int, int] = (-195, -195)
+    planet_types: list[PlanetType] = [PlanetType.R]
 
 class Serrati(Species):
     value: int = 4447100
@@ -105,12 +115,14 @@ class Serrati(Species):
     code: str = "TUSSER"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R]
     min_max_temperature: tuple[int, int] = (170, 175)
+    planet_types: list[PlanetType] = [PlanetType.R]
 
 class Stigmasis(Species):
     value: int = 19010800
     name: str = "Stigmasis"
     code: str = "TUSSTI"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.SO2]
+    planet_types: list[PlanetType] = [PlanetType.R]
 
 class Triticum(Species):
     value: int = 7774700
@@ -118,6 +130,7 @@ class Triticum(Species):
     code: str = "TUSTRI"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R]
     min_max_temperature: tuple[int, int] = (190, 195)
+    planet_types: list[PlanetType] = [PlanetType.R]
 
 class Ventusa(Species):
     value: int = 3277700
@@ -125,9 +138,11 @@ class Ventusa(Species):
     code: str = "TUSVEN"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R]
     min_max_temperature: tuple[int, int] = (155, 160)
+    planet_types: list[PlanetType] = [PlanetType.R]
 
 class Virgam(Species):
     value: int = 14313700
     name: str = "Virgam"
     code: str = "TUSVIR"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.H2O, AtmosphereType.H2O_R]
+    planet_types: list[PlanetType] = [PlanetType.R]

@@ -57,17 +57,24 @@ class Species:
                 return False
 
         planet_surface_temperature = int(planet["SurfaceTemperature"])
-        if self.min_max_temperature[0] == 0 and self.min_max_temperature[1] == 0:
+        min_temperature, max_temperature = self.min_max_temperature
+        if min_temperature == 0 and max_temperature == 0:
             return True
-        if self.min_max_temperature[0] == self.min_max_temperature[1]:
-            if self.min_max_temperature[0] < 0:
-                if planet_surface_temperature <= self.min_max_temperature[0]:
+        if min_temperature == max_temperature:
+            if min_temperature < 0:
+                if planet_surface_temperature <= abs(min_temperature):
                     return True
             else:
-                if planet_surface_temperature >= self.min_max_temperature[0]:
+                if planet_surface_temperature >= min_temperature:
                     return True
         else:
-            if planet_surface_temperature >= self.min_max_temperature[0] and planet_surface_temperature < self.min_max_temperature[1]:
+            if planet_surface_temperature >= min_temperature and planet_surface_temperature < max_temperature:
                 return True
         if TESTING_MODE == TestingMode.Testing: print(f"Rejected {self.code} because of temperature")
         return False
+    
+    def check_if_gravity_less_than(self, planet: dict[str, Any], g: float) -> bool:
+        if (float(planet["SurfaceGravity"]) / 9.8) < g:
+            return True
+        else:
+            return False

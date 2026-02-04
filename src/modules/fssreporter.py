@@ -12,9 +12,10 @@ class FSSReporterState(ModuleState):
 class FSSReporter(Module):
     style = Style.from_dict({
         "module_color": "#00ffff",
-        "valuable": "#6060ff",
-        "biological": "#00ff00",
-        "geological": "#ffff00",
+        "valuable": "#6060ff bold",
+        "biological": "#00a000 bold",
+        "bio": "#00ff80",
+        "geological": "#ffff00 bold",
     })
 
     MODULE_NAME = "FSSReporter"
@@ -73,13 +74,13 @@ class FSSReporter(Module):
                     organisms: list[str] = []
                     for genus in bios_worth[3]:
                         for species in genus:
-                            organisms.append(f"{species.code}-{round(float(species.value / 1000000), ndigits=1)}M")
+                            organisms.append(f"{species.code} {round(float(species.value / 1000000), ndigits=1)}M")
                     output: str = ""
                     for j in range(len(organisms)):
-                        output = f"{output}, {organisms[j]}"
+                        output = f"{output}<bio>{organisms[j]:16}</bio>"
                         if (j + 1) % 6 == 0 and len(organisms) > (j + 1):
-                            output = str(output + "\n  ║\t\t")
-                    self.print(f"{output}</biological>", prefix="<biological>  ║\t\t")
+                            output = str(output + "\n  <biological>║</biological>\t\t")
+                    self.print(f"</biological>{output}", prefix="<biological>  ║\t\t")
 
         geologicals = bodies.get_bodies_by_attribute(BodyAttribute.geos, sorted = True)
         total_geo_count = 0
@@ -134,33 +135,26 @@ class FSSReporter(Module):
         maximum_values: list[int] = []
         minimum_values: list[int] = []
         average_values: list[int] = []
-        total_minimum_value = 0
-        total_maximum_value = 0
-        total_average_value = 0
         for genus in taxon:
             valid_species_in_genus = genus.list_possible_species(self.core.state.current_system.bodies, planet)
             if valid_species_in_genus:
                 valid_species.append(valid_species_in_genus)
         for genus in valid_species:
-            if genus:
-                max_value = 0
-                min_value = genus[0].value
-                average_value = 0
-                for species in genus:
-                    if species.value > max_value: max_value = species.value
-                    if species.value < min_value: min_value = species.value
-                    average_value += species.value
-                average_value = int(average_value / len(genus))
-                maximum_values.append(max_value)
-                minimum_values.append(min_value)
-                average_values.append(average_value)
+            max_value = 0
+            min_value = genus[0].value
+            average_value = 0
+            for species in genus:
+                if species.value > max_value: max_value = species.value
+                if species.value < min_value: min_value = species.value
+                average_value += species.value
+            average_value = int(average_value / len(genus))
+            maximum_values.append(max_value)
+            minimum_values.append(min_value)
+            average_values.append(average_value)
         maximum_values.sort(reverse=True)
         minimum_values.sort()
-        for i in range(num_signatures):
-            total_minimum_value += minimum_values[i]
-            total_maximum_value += maximum_values[i]
-        for average in average_values:
-            total_average_value += average
-        total_average_value = int(total_average_value / len(average_values))
+        total_minimum_value = sum(minimum_values[:num_signatures])
+        total_maximum_value = sum(maximum_values[:num_signatures])
+        total_average_value = int(sum(average_values) / len(average_values))
         
         return (total_minimum_value, total_maximum_value, total_average_value, valid_species)

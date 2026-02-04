@@ -9,6 +9,7 @@ import json
 from src.version import EDSST_VERSION, TESTING_MODE, TestingMode
 from pathlib import Path
 from jsonschema import ValidationError, validate
+from src.util import LOGS_DIRECTORY
 
 config = toml.load("config.toml")
 
@@ -18,6 +19,8 @@ eddn_fssallbodiesfound_schema = json.load((schemas_directory / "fssallbodiesfoun
 eddn_fssbodysignals_schema = json.load((schemas_directory / "fssbodysignals-v1.0.json").open())
 eddn_fssdiscoveryscan_schema = json.load((schemas_directory / "fssdiscoveryscan-v1.0.json").open())
 eddn_scanbarycentre_schema = json.load((schemas_directory / "scanbarycentre-v1.0.json").open())
+eddn_codexentry_schema = json.load((schemas_directory / "codexentry-v1.0.json").open())
+eddn_navroute_schema = json.load((schemas_directory / "navroute-v1.0.json").open())
 
 
 class EDDNState(module.ModuleState):
@@ -29,7 +32,7 @@ class EDDN(module.Module):
     })
 
     MODULE_NAME: str = "EDDN"
-    MODULE_VERSION: str = "0.0.4"
+    MODULE_VERSION: str = "0.1.0"
     EXTRA_ALIASES: set[str] = set(["eddn", "eddnintegration", "eddnsender"])
     error_dump_path: Path
     STATE_TYPE = EDDNState     # If your module has its own state class, then this has to be set to it. 
@@ -61,6 +64,10 @@ class EDDN(module.Module):
                     await self.post_fssbodysignals(event)
                 case "FSSDiscoveryScan":
                     await self.post_fssdiscoveryscan(event)
+                case "NavRoute":
+                    await self.post_navroute(event)
+                #case "CodexEntry":         EDDN CodexEntry schema is messed up...
+                #    await self.post_codexentry(event)
                 case _: pass
         
     async def process_user_input(self, arguments: list[str], tg: asyncio.TaskGroup) -> None:
@@ -74,6 +81,19 @@ class EDDN(module.Module):
             self.disable()
         match arguments[1]:
             case _: pass
+
+    async def post_navroute(self, event: dict[str, Any]) -> None:
+        try:
+            route = json.load((LOGS_DIRECTORY / "NavRoute.json").open())
+        except:
+            self.print("<error>Failed to open NavRoute.json for sending EDDN schema!</error>")
+            return
+        data: dict[str, Any] = {
+            "horizons":         self.core.is_horizons,
+            "odyssey":          self.core.is_odyssey,
+        }
+        data.update(route)
+        self.validate_and_post(data, eddn_navroute_schema)
 
     async def post_scanbarycentre(self, event: dict[str, Any]) -> None:
         data: dict[str, Any] = {
@@ -156,6 +176,32 @@ class EDDN(module.Module):
         if "Factions" in data:
             self.try_remove_keys(data["Factions"], ["HappiestSystem", "HomeSystem", "MyReputation", "SquadronFaction"])
         self.validate_and_post(data, eddn_journal_schema)
+
+    async def post_codexentry(self, event: dict[str, Any]) -> None:
+        event = deepcopy(event)
+        data: dict[str, Any] = {
+            "timestamp":        event["timestamp"],
+            "event":            event["event"],
+            "horizons":         self.core.is_horizons,
+            "odyssey":          self.core.is_odyssey,
+            "StarSystem":       self.core.state.current_system.name if "StarSystem" not in event else self.core.state.current_system.name if self.core.state.current_system.name == event["StarSystem"] else None,
+            "StarPos":          [self.core.state.current_system.coordinates[0], self.core.state.current_system.coordinates[1], self.core.state.current_system.coordinates[2]],
+            "SystemAddress":    self.core.state.current_system.address if self.core.state.current_system.address == event["SystemAddress"] else None,
+        }
+        if "Name" in event:                 data["Name"] = str(event["Name"])
+        if "Region" in event:               data["Region"] = str(event["Region"])
+        if "EntryID" in event:              data["EntryID"] = int(event["EntryID"])
+        if "Category" in event:             data["Category"] = str(event["Category"])
+        if "Latitude" in event and "Longitude" in event: 
+            data["Latitude"] = float(event["Latitude"])
+            data["Longitude"] = float(event["Longitude"])
+        if "SubCategory" in event:  data["SubCategory"] = str(event["SubCategory"])
+        if "NearestDestination" in event:   data["NearestDestination"] = str(event["NearestDestination"])
+        #if "VoucherAmount" in event: data["VoucherAmount"] = int(event["VoucherAmount"])
+        if "Traits" in event:               data["Traits"] = event["Traits"]
+        if "BodyID" in event:               data["BodyID"] = int(event["BodyID"])
+        if "BodyName" in event:             data["BodyName"] = str(event["BodyName"])
+        self.validate_and_post(data, eddn_journal_schema)
         
 
     def validate_and_post(self, message_data: dict[str, Any], schema: Any) -> None:
@@ -179,6 +225,8 @@ class EDDN(module.Module):
             self.print("<error>Please contact module maintainer.</error>")
             self.disable()
         r = httpx.post("https://eddn.edcd.io:4430/upload/", json=data, timeout=15.0)
+        if TESTING_MODE == TestingMode.Testing:
+            print(r.text)
         r.raise_for_status()
         if TESTING_MODE == TestingMode.Testing:
             self.print(f"<blue>Testing</blue>: With event <mint>{data["message"]["event"]}</mint> on <bright_blue>{data["$schemaRef"].removeprefix("https://eddn.edcd.io/schemas/")}</bright_blue> got response code <magenta>{r.status_code}</magenta> - {r.text}")
