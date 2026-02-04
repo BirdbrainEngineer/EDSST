@@ -57,7 +57,7 @@ class PlanetType(Enum):
     GG_WBL =    "Gas giant with water based life"
     GG_ABL =    "Gas giant with ammonia based life"
     GG_W =      "Water giant"
-    GG_HR =     "Helium-rich"
+    GG_HR =     "Helium-rich gas giant"
     GG_H =      "Helium gas giant"
     NONE = ""
 
@@ -72,7 +72,8 @@ class StarType():
         self.subclass = subclass
         self.luminosity = luminosity
 
-
+def get_distance(a: tuple[float, float, float], b:tuple[float, float, float]):
+    return math.sqrt((a[0]-b[0])**2+(a[1]-b[1])**2+(a[2]-b[2])**2)
 
 def text_to_clipboard(text: str) -> None:
     if WL_COPY_BIN_PATH is not None:

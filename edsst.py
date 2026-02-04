@@ -9,6 +9,7 @@ from src.modules.dw3densitycolumnsurvey import DW3DensityColumnSurvey
 from src.modules.chatboxrelay import ChatboxRelay
 from src.modules.eddn.eddn import EDDN
 from src.modules.edsm import EDSM
+from src.modules.densitynavroutesurvey import DensityNavRouteSurvey
 import src.version
 from pathlib import Path
 from typing import Iterator
@@ -135,10 +136,11 @@ async def main():
     modules.append(core_module)
     modules.append(EDDN(core_module))
     modules.append(edsm_module)
+    modules.append(ChatboxRelay(partial(process_user_input, modules)))
     modules.append(FSSReporter(core_module))
     modules.append(BoxelSurvey(core_module, edsm_module))
     modules.append(DW3DensityColumnSurvey(core_module))
-    modules.append(ChatboxRelay(partial(process_user_input, modules)))
+    modules.append(DensityNavRouteSurvey())
     #modules.append(ExampleModule())
     for module in modules:
         module.caught_up = False 
