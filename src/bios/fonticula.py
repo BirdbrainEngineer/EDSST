@@ -63,5 +63,5 @@ class Upupam(Species):
     value: int = 5727600
     name: str = "Upupam"
     code: str = "FONUPU"
-    atmosphere_types: list[AtmosphereType] = [AtmosphereType.Ar_R, AtmosphereType.Ar]
+    atmosphere_types: list[AtmosphereType] = [AtmosphereType.Ar_R]
     planet_types: list[PlanetType] = [PlanetType.R, PlanetType.RI, PlanetType.I]

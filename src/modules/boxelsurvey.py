@@ -21,7 +21,7 @@ class BoxelSurvey(module.Module):
     })
 
     MODULE_NAME = "BoxelSurvey"
-    MODULE_VERSION: str = "0.1.1"
+    MODULE_VERSION: str = "0.1.2"
     EXTRA_ALIASES: set[str] = set(["boxelsurvey", "boxel", "boxels"])
     STATE_TYPE = BoxelSurveyState
     boxel_log_file_path: Path
@@ -69,6 +69,12 @@ class BoxelSurvey(module.Module):
                 else:
                     self.print("Systems left in queue:")
                     self.print(f"{"\n".join(self.state.system_list)}", prefix="")
+
+            case "skip":
+                self.skip_system()
+
+            case "copy":
+                text_to_clipboard(self.state.next_system)
 
             case "survey":
                 # boxel survey [num_to_scan] of [num_of_stars] in [boxel_name]
@@ -136,6 +142,24 @@ class BoxelSurvey(module.Module):
                 else:
                     self.print("No survey ongoing!")
             case _: pass
+
+    def skip_system(self) -> None:
+        self.print(f"Skipping system {self.state.next_system}.")
+        if len(self.state.system_list) > 0:
+            self.state.next_system = self.load_next_system()
+            while self.state.next_system in self.state.ignore_systems_set:
+                open(self.boxel_log_file_path, "a").write(self.state.next_system + "\n")
+                self.state.ignore_systems_set.remove(self.state.next_system)
+                self.print(f"System <cyan>{self.state.next_system}</cyan> has already been visited by someone... Skipping.")
+                if not self.state.system_list:
+                    break
+                self.state.next_system = self.load_next_system()
+            text_to_clipboard(self.state.next_system)
+            self.print(f"Next system: <cyan>{self.state.next_system}</cyan>")
+            self.save_state()
+        else:
+            self.print("<green>Survey Completed!</green>")
+            self.clear_survey()
 
     def update_survey(self, star_system: str) -> None:
         self.print(f"Updating survey with {star_system}, current system {self.state.next_system}")

@@ -1,1 +1,397 @@
-    
+{
+  "timestamp": "2026-02-04T15:08:55Z",
+  "event": "NavRoute",
+  "Route": [
+    {
+      "StarSystem": "Wruethae IH-D d12-0",
+      "SystemAddress": 9839860843,
+      "StarPos": [-3097.90625, 69.875, 48622.28125],
+      "StarClass": "A"
+    },
+    {
+      "StarSystem": "Wruethae GH-D d12-10",
+      "SystemAddress": 353403690091,
+      "StarPos": [-3190.5, 71.46875, 48630.25],
+      "StarClass": "F"
+    },
+    {
+      "StarSystem": "Wruethae LO-G c24-5",
+      "SystemAddress": 1452739213522,
+      "StarPos": [-3278.375, 63.78125, 48649.65625],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Wruethae EH-D d12-15",
+      "SystemAddress": 525168827499,
+      "StarPos": [-3370.875, 56.3125, 48643.09375],
+      "StarClass": "G"
+    },
+    {
+      "StarSystem": "Wruethae UD-L b49-1",
+      "SystemAddress": 2823538569641,
+      "StarPos": [-3463.65625, 48.625, 48640.5625],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Wruethae GJ-G c24-2",
+      "SystemAddress": 627635697874,
+      "StarPos": [-3551.5, 25.09375, 48649.46875],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Wruethae TZ-I b50-1",
+      "SystemAddress": 2821122519473,
+      "StarPos": [-3641.71875, 7.0, 48659.625],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Wruethae MO-K b49-1",
+      "SystemAddress": 2819780276649,
+      "StarPos": [-3730.78125, -12.59375, 48653.90625],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietcheia KR-N a102-0",
+      "SystemAddress": 4956928926568,
+      "StarPos": [-3817.4375, -37.46875, 48674.0],
+      "StarClass": "T"
+    },
+    {
+      "StarSystem": "Synietchua DW-S b51-1",
+      "SystemAddress": 2817364226489,
+      "StarPos": [-3908.78125, -48.0625, 48675.09375],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchua XK-U b50-1",
+      "SystemAddress": 2816290419121,
+      "StarPos": [-3995.21875, -75.4375, 48670.09375],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchua DS-Q b52-2",
+      "SystemAddress": 5014239867329,
+      "StarPos": [-4070.15625, -92.4375, 48698.8125],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchua DY-O b53-0",
+      "SystemAddress": 615119614409,
+      "StarPos": [-4159.375, -101.40625, 48716.75],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchua WM-Q b52-0",
+      "SystemAddress": 613777371585,
+      "StarPos": [-4251.15625, -112.625, 48713.40625],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchua YN-O b53-1",
+      "SystemAddress": 2811726819785,
+      "StarPos": [-4340.03125, -137.59375, 48719.375],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchua VI-O b53-1",
+      "SystemAddress": 2810384576969,
+      "StarPos": [-4427.4375, -155.4375, 48719.03125],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchua RI-O b53-0",
+      "SystemAddress": 610287579593,
+      "StarPos": [-4519.125, -158.28125, 48727.65625],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchua JZ-D d13-26",
+      "SystemAddress": 902874242163,
+      "StarPos": [-4608.9375, -177.15625, 48717.09375],
+      "StarClass": "A"
+    },
+    {
+      "StarSystem": "Synietchua MY-N b53-1",
+      "SystemAddress": 2806894784969,
+      "StarPos": [-4698.8125, -187.6875, 48732.28125],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchua QK-K b55-1",
+      "SystemAddress": 2805821043161,
+      "StarPos": [-4784.875, -200.8125, 48762.5],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchua PA-K b55-0",
+      "SystemAddress": 605455479257,
+      "StarPos": [-4872.0625, -233.125, 48769.21875],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchua VA-E c28-1",
+      "SystemAddress": 350408751346,
+      "StarPos": [-4958.1875, -255.125, 48781.84375],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Synietchua JA-C d14-15",
+      "SystemAddress": 524816440443,
+      "StarPos": [-5047.75, -264.3125, 48794.46875],
+      "StarClass": "A"
+    },
+    {
+      "StarSystem": "Synietchua MR-H b56-0",
+      "SystemAddress": 601965621729,
+      "StarPos": [-5128.9375, -291.78125, 48791.34375],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchaa YZ-F b57-0",
+      "SystemAddress": 600891879913,
+      "StarPos": [-5221.71875, -293.0625, 48796.59375],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchaa VU-F b57-0",
+      "SystemAddress": 599549637097,
+      "StarPos": [-5311.59375, -305.78125, 48806.25],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchaa PZ-F b57-0",
+      "SystemAddress": 598475960809,
+      "StarPos": [-5404.0625, -301.03125, 48806.34375],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchaa QW-D c28-2",
+      "SystemAddress": 624414210290,
+      "StarPos": [-5497.09375, -300.1875, 48800.65625],
+      "StarClass": "G"
+    },
+    {
+      "StarSystem": "Synietchaa KF-E b58-0",
+      "SystemAddress": 596060041713,
+      "StarPos": [-5581.53125, -291.40625, 48833.65625],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchaa LG-C b59-0",
+      "SystemAddress": 594717798905,
+      "StarPos": [-5667.8125, -312.78125, 48853.625],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Synietchaa PX-B c29-0",
+      "SystemAddress": 74188601594,
+      "StarPos": [-5753.5, -338.90625, 48838.5],
+      "StarClass": "G"
+    },
+    {
+      "StarSystem": "Synietchaa PS-B c29-1",
+      "SystemAddress": 348932258042,
+      "StarPos": [-5834.625, -367.75, 48821.84375],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Swuemee LC-C d0",
+      "SystemAddress": 9252560003,
+      "StarPos": [-5893.625, -415.53125, 48862.6875],
+      "StarClass": "F"
+    },
+    {
+      "StarSystem": "Swuemee WZ-D c1",
+      "SystemAddress": 348730865922,
+      "StarPos": [-5974.5625, -444.21875, 48893.0],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Swuemee LX-B d5",
+      "SystemAddress": 181017681027,
+      "StarPos": [-6063.8125, -437.0, 48873.40625],
+      "StarClass": "F"
+    },
+    {
+      "StarSystem": "Swuemee WF-C c1-0",
+      "SystemAddress": 73584523530,
+      "StarPos": [-6143.75, -462.0625, 48899.53125],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Swuemee YL-A c2-0",
+      "SystemAddress": 73450305810,
+      "StarPos": [-6222.40625, -462.53125, 48935.6875],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Swuemee TS-A b4-0",
+      "SystemAddress": 586127340065,
+      "StarPos": [-6313.5, -479.8125, 48944.375],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Swuemee SA-C c1-0",
+      "SystemAddress": 73181837578,
+      "StarPos": [-6384.9375, -499.53125, 48900.65625],
+      "StarClass": "G"
+    },
+    {
+      "StarSystem": "Preia Blou TQ-D c0",
+      "SystemAddress": 72980478210,
+      "StarPos": [-6466.65625, -520.0, 48868.78125],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Preia Blou WW-B c1-0",
+      "SystemAddress": 72913369354,
+      "StarPos": [-6543.40625, -542.71875, 48900.125],
+      "StarClass": "G"
+    },
+    {
+      "StarSystem": "Preia Blou WR-B c1-0",
+      "SystemAddress": 72779118858,
+      "StarPos": [-6622.59375, -580.96875, 48897.15625],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Preia Blou ZY-Z d0",
+      "SystemAddress": 9084755083,
+      "StarPos": [-6701.78125, -576.90625, 48939.1875],
+      "StarClass": "G"
+    },
+    {
+      "StarSystem": "Preia Blou VX-Z c1-1",
+      "SystemAddress": 347321481490,
+      "StarPos": [-6787.0625, -573.15625, 48950.875],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Preia Blou WS-Z c1-0",
+      "SystemAddress": 72376432914,
+      "StarPos": [-6862.25, -619.84375, 48939.53125],
+      "StarClass": "G"
+    },
+    {
+      "StarSystem": "Preia Blou VN-Z c1-0",
+      "SystemAddress": 72175073554,
+      "StarPos": [-6949.65625, -640.71875, 48945.0],
+      "StarClass": "G"
+    },
+    {
+      "StarSystem": "Preia Blou YT-X c2-0",
+      "SystemAddress": 72107964698,
+      "StarPos": [-7023.375, -661.25, 48975.375],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Preia Blou YO-X c2-0",
+      "SystemAddress": 71973714202,
+      "StarPos": [-7101.75, -703.9375, 48976.03125],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Preia Blou UT-X c2-0",
+      "SystemAddress": 71839529242,
+      "StarPos": [-7183.625, -664.34375, 48978.59375],
+      "StarClass": "M"
+    },
+    {
+      "StarSystem": "Preia Blou YU-V c3-0",
+      "SystemAddress": 71705278754,
+      "StarPos": [-7259.625, -704.0625, 49015.15625],
+      "StarClass": "G"
+    },
+    {
+      "StarSystem": "Preia Blou UJ-X c2-0",
+      "SystemAddress": 71571028250,
+      "StarPos": [-7342.59375, -721.21875, 48995.6875],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Preia Blou WP-V c3-0",
+      "SystemAddress": 71436810530,
+      "StarPos": [-7422.53125, -742.65625, 49015.65625],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Preia Blou YV-T c4-0",
+      "SystemAddress": 71302592810,
+      "StarPos": [-7502.875, -743.90625, 49057.40625],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Preia Blou XP-X d1-0",
+      "SystemAddress": 8883379347,
+      "StarPos": [-7587.0, -749.53125, 49037.6875],
+      "StarClass": "G"
+    },
+    {
+      "StarSystem": "Preia Blou RK-V c3-0",
+      "SystemAddress": 70967015714,
+      "StarPos": [-7667.84375, -782.96875, 49033.09375],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Preia Blou QK-V c3-0",
+      "SystemAddress": 70899906850,
+      "StarPos": [-7741.25, -781.71875, 49016.40625],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Swuemaae JV-X d1-2",
+      "SystemAddress": 77569318035,
+      "StarPos": [-7822.5, -743.71875, 49029.65625],
+      "StarClass": "F"
+    },
+    {
+      "StarSystem": "Swuemaae QQ-V c3-0",
+      "SystemAddress": 70631504162,
+      "StarPos": [-7900.46875, -741.875, 49015.5625],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Swuemaae HV-X d1-0",
+      "SystemAddress": 8816286867,
+      "StarPos": [-7978.71875, -740.15625, 49018.71875],
+      "StarClass": "F"
+    },
+    {
+      "StarSystem": "Swuemaae GV-X d1-1",
+      "SystemAddress": 43159248019,
+      "StarPos": [-8059.4375, -733.40625, 49018.34375],
+      "StarClass": "F"
+    },
+    {
+      "StarSystem": "Swuemaae IF-X c2-0",
+      "SystemAddress": 70228818202,
+      "StarPos": [-8133.15625, -746.75, 49002.96875],
+      "StarClass": "K"
+    },
+    {
+      "StarSystem": "Swuemaae HQ-X d1-1",
+      "SystemAddress": 43142454419,
+      "StarPos": [-8140.0, -818.90625, 49039.21875],
+      "StarClass": "A"
+    },
+    {
+      "StarSystem": "Swuemaae DV-Y e0",
+      "SystemAddress": 1096773196,
+      "StarPos": [-8215.375, -818.78125, 49042.1875],
+      "StarClass": "B"
+    },
+    {
+      "StarSystem": "Swuemaae HL-X d1-0",
+      "SystemAddress": 8749145235,
+      "StarPos": [-8288.59375, -876.0625, 49034.46875],
+      "StarClass": "F"
+    },
+    {
+      "StarSystem": "Swuemaae GL-X d1-1",
+      "SystemAddress": 43092106387,
+      "StarPos": [-8358.9375, -871.09375, 49087.625],
+      "StarClass": "A"
+    }
+  ],
+  "MaxRange": 93.2829354956602
+}

@@ -57,7 +57,7 @@ class PlanetType(Enum):
     GG_WBL =    "Gas giant with water based life"
     GG_ABL =    "Gas giant with ammonia based life"
     GG_W =      "Water giant"
-    GG_HR =     "Helium-rich gas giant"
+    GG_HR =     "Helium rich gas giant"
     GG_H =      "Helium gas giant"
     NONE = ""
 
@@ -138,7 +138,7 @@ def abbreviate_planet_type(planet_type: str) -> str:    # EDSST planet type abbr
         case "Gas giant with water based life":         return "GG WBL"
         case "Gas giant with ammonia based life":       return "GG ABL"
         case "Water giant":                             return "GG W"
-        case "Helium-rich":                             return "GG HR"
+        case "Helium rich":                             return "GG HR"
         case "Helium gas giant":                        return "GG H"
         case _: return planet_type
 
