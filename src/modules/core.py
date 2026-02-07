@@ -1,6 +1,8 @@
 from enum import Enum, auto
 from src.modules.module import Module, ModuleState
 import msgspec
+from prompt_toolkit import print_formatted_text
+from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.styles import Style
 import asyncio
 from typing import Any
@@ -177,7 +179,7 @@ class CoreModule(Module):
                     self.print("Exiting.")
                     exit("Malformed Elite: Dangerous journal log.")
                 if not self.commander_greeted:
-                    self.print(f"Welcome, Commander {self.commander_name}!")
+                    print_formatted_text(HTML(f"<module_color>core</module_color>: Welcome, Commander {self.commander_name}!"), style=self.style)
                 self.commander_greeted = True
 
             case "Scan":
@@ -186,10 +188,13 @@ class CoreModule(Module):
                 self.state.current_system.bodies.add_body_signal(event)
                 if event["WasDiscovered"] == False:
                     self.state.current_system.bodies.record_attribute(BodyAttribute.first_discovery, bodyID)
-                    if is_cluster:                          self.state.current_system.bodies.record_attribute(BodyAttribute.first_discovery_cluster, bodyID)
+                    if is_cluster:
+                        self.state.current_system.bodies.record_attribute(BodyAttribute.first_discovery_cluster, bodyID)
                     else:
-                        if is_star:                         self.state.current_system.bodies.record_attribute(BodyAttribute.first_discovery_star, bodyID)
-                        else:                               self.state.current_system.bodies.record_attribute(BodyAttribute.first_discovery_planet, bodyID)
+                        if is_star:
+                            self.state.current_system.bodies.record_attribute(BodyAttribute.first_discovery_star, bodyID)
+                        else:
+                            self.state.current_system.bodies.record_attribute(BodyAttribute.first_discovery_planet, bodyID)
                 if event["WasMapped"] == False:
                     self.state.current_system.bodies.record_attribute(BodyAttribute.first_possible_map, bodyID)
                     if not is_cluster and not is_star:

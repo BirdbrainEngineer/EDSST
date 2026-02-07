@@ -30,7 +30,14 @@ After you have set up EDSST, open a terminal, navigate to the EDSST root folder 
 ```bash
 uv run python edsst.py
 ```
+![Welcome message](images/welcome_message.png)
+
+The first time you boot the program, it will be complaining about missing state files, this is normal and will only happen on first boot or when upgrading the modules.
+
 In the future there may be more convenient ways to set up- and run EDSST.
+
+### To exit the program
+It is recommended to exit the program by simply typing out the command: `exit`
 
 
 ## Included modules and controlling them
@@ -55,6 +62,8 @@ As a developer - the `state` variable of the `CoreModule` holds useful sorted in
 
 `eventstream on` | `eventstream off` - Turns on the display of incoming journal events or not. It currently only displays the `"Event"` value of the journal event.
 
+![example of core module functionality](images/core_image.png)
+
 
 ### EDDN (v.0.1.0)
 The EDDN module attempts to send all exploration data to [EDDN (Elite Dangerous Data Network)](https://eddn.edcd.io/), except for `CodexEntry` events. In the current version, it does not send any market information, station information, and so on. If disabled, then sends no data at all!
@@ -70,15 +79,17 @@ The FSS Reporter module is able to report the scan results of the current system
 - Number of stars in the system
 - Number of planets in the system
 - Number of first discoveries (you still need to hand in the data at a station for it to actually count, though!)
-- Valuable planets to surface scan in the system. It reports their name as well as the type and whether they are terraformable or not.
-- Planets with biological signatures. It reports their name, number of signatures, minimum value, maximum value and average value of the signatures if scanned, type of the planet, mean surface temperature as well as the atmosphere type. In addition, if the module is in "verbose" mode, then it will report the possible species that can be found on the planet with their "3+3 Species codes" as well as their worth.
-- Planets with geological signatures. It reports their name, number of signatures and type of volcanism of the planet.
+- Valuable planets to surface scan in the system, if any. It reports their name as well as the type and whether they are terraformable or not.
+- Planets with biological signatures, if any. It reports their name, number of signatures, minimum value, maximum value and average value of the signatures if scanned, type of the planet, mean surface temperature as well as the atmosphere type. In addition, if the module is in "verbose" mode, then it will report the possible species that can be found on the planet with their "3+3 Species codes" as well as their worth.
+- Planets with geological signatures, if any. It reports their name, number of signatures and type of volcanism of the planet.
 
 **Commands:**
 
 `report` - displays the scan report for the current system. Will also display a partial scan
 
 `more verbose` | `less verbose` - whether to display extra information about the planets reported on.
+
+![example of FSSReporter module functionality](images/fssreporter_image.png)
 
 ### ChatboxRelay (v.0.1.2)
 *Name and aliases* - `chatboxrelay`, `chat`, `chatrelay`, `textrelay`, `commsrelay`
@@ -92,6 +103,10 @@ Be aware that sending multiple messages in quick succession in-game will result 
 `start` | `listen` | `begin` - The module starts to relay messages from you in the Local in-game chat.
 
 `stop` | `deafen` | `end` - The module stops relaying messages from you in the Local in-game chat.
+
+![example of ChatboxRelay module functionality in-game](images/chatrelay_ingame_image.png)
+![example of ChatboxRelay module functionality in-edsst](images/chatrelay_inprogram_image.png)
+
 
 ### BoxelSurvey (v.0.1.2)
 *Name and aliases* - `boxelsurvey`, `boxel`, `boxels`
@@ -126,6 +141,8 @@ For example: `boxelsurvey survey all of 43 in Thuecheae TI-I c26-`
 
 `clear` | `finish` - Stops the survey early and sets the module up for the next survey to start. Be aware that if you use this, then you will not have visited the last system in the boxel, which means you technically lose information about how many systems are in the boxel for later processing!
 
+![example of BoxelSurvey module functionality](images/boxelsurvey_image.png)
+
 
 ### DW3DensityColumnSurvey (v.0.0.4)
 *Name and aliases* - `dcs`, `dc`, `dw3c`, `column`, `densitycolumn`, `densitycolumnsurvey`
@@ -156,6 +173,8 @@ For example: `dcs 49 11.2` or `dw3c 13 18.7` or `column 0 0`
 
 `display` - Lists the currently logged datapoints.
 
+![example of DW3DensityColumnSurvey module functionality](images/densitycolumnsurvey_image.png)
+
 
 ### DensityNavRouteSurvey (v.0.0.2)
 *Name and aliases* - `dnav`, `navd`, `densitynav`, `navdensity`, `navroutedensity`
@@ -169,3 +188,6 @@ The EDSM module is currently only useful for developers to query data about star
 
 ### ExampleModule
 There is also code for an ["ExampleModule"](src/modules/examplemodule.py), which sets up a basic module and explains the way to add your own module/functionality to EDSST.
+
+### Future modules
+There will likely be a few more modules in the future, such as a Spansh router or something to help with colonization... However, the development of those modules will likely happen after Distant Worlds 3 has concluded. 

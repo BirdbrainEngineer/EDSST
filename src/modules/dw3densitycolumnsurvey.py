@@ -112,14 +112,14 @@ class DW3DensityColumnSurvey(Module):
                             self.state.survey_start_system = self.core.state.current_system.name
                             self.survey_file_path = Path(self.survey_data_dir / str(self.core.state.current_system.name + ".tsv"))
                             self.survey_file_path.open("w")
-                            self.print("<module_color>Started Density Column Survey from system: </module_color>" + self.core.state.current_system.name)
+                            self.print(f"Started Density Column Survey from system: <cyan>{self.core.state.current_system.name}</cyan>")
                             self.print("Please make sure to enter current system's count and max distance before continuing!")
                             self.save_state()
 
                     case "undo":
                         if len(self.state.logged_systems) > 0:
                             removed = self.state.logged_systems.pop(0).split(sep='\t')
-                            self.print(f"Removed datapoint for system: {removed[0]}")
+                            self.print(f"Removed datapoint for system: <cyan>{removed[0]}</cyan>")
                         else:
                             self.print("No datapoints to remove!")
                             return
@@ -179,7 +179,6 @@ class DW3DensityColumnSurvey(Module):
                                 return
                             self.process_datapoint(count, distance)
                         else:
-                            self.print("Survey not started yet, or received unknown command!")
                             return
 
     def process_datapoint(self, count: int, distance: float) -> None:
@@ -215,7 +214,7 @@ class DW3DensityColumnSurvey(Module):
             else:
                 self.state.logged_systems.append(datapoint)
         
-        self.print(f"<module_color>Recorded datapoint for system: </module_color>{self.core.state.current_system.name}")
+        self.print(f"Recorded datapoint for system: <cyan>{self.core.state.current_system.name}</cyan>")
         self.print(f"{datapoint.strip()}", prefix="")
         self.state.system_in_sequence += 1
         self.state.previous_system = self.core.state.current_system.name
@@ -223,7 +222,7 @@ class DW3DensityColumnSurvey(Module):
         self.state.valid_system = False
         self.save_state()
         if self.state.system_in_sequence == 21:
-            self.print("<module_color>Survey completed!</module_color>\n")
+            self.print("<green>Survey completed!</green>\n")
             self.survey_file_path.open("w").writelines(self.state.logged_systems)
             self.survey_file_path = Path(self.module_dir / "default.tsv")
             self.state.logged_systems.clear()

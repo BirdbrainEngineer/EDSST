@@ -124,7 +124,7 @@ class BoxelSurvey(module.Module):
                             for system in response:
                                 self.state.ignore_systems_set.add(str(system["name"]).lower())
                         self.state.survey_ongoing = True
-                        self.state.next_system = self.state.system_list[0]
+                        self.state.next_system = self.load_next_system()
                         if self.state.next_system in self.state.ignore_systems_set or self.state.next_system == self.core.state.current_system.name.lower():
                             self.update_survey(self.state.next_system)
                         else:
