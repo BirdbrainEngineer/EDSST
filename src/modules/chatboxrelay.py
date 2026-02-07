@@ -15,13 +15,15 @@ class ChatboxRelay(module.Module):
 
     MODULE_NAME: str = "ChatboxRelay"
     MODULE_VERSION: str = "0.1.2"
-    EXTRA_ALIASES: set[str] = set(["chatrelay", "chatboxrelay", "textrelay", "commsrelay", "chat"])
+    EXTRA_ALIASES: set[str] = set(["chat", "chatrelay", "textrelay", "commsrelay"])
     STATE_TYPE = ChatboxRelayState
     state: ChatboxRelayState
     push_user_input: Callable[[asyncio.TaskGroup, str], Any]
 
     def __init__(self, user_input_pusher: Callable[[asyncio.TaskGroup, str], Any]) -> None:
         super().__init__(self.EXTRA_ALIASES)
+        if not self.state.enabled:
+            self.enable()
         self.push_user_input = user_input_pusher
 
     async def process_event(self, event: dict[str, Any], tg: asyncio.TaskGroup) -> None:   # Events are either new journal file lines or events produced by EDSST

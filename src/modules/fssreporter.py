@@ -16,11 +16,12 @@ class FSSReporter(Module):
         "biological": "#00a000 bold",
         "bio": "#00ff80",
         "geological": "#ffff00 bold",
+        "module_bold": "#00ffff bold"
     })
 
     MODULE_NAME = "FSSReporter"
     MODULE_VERSION: str = "0.1.0"
-    EXTRA_ALIASES: set[str] = set(["fss", "fssreporter", "scanreport"])
+    EXTRA_ALIASES: set[str] = set(["fss", "scanreport"])
     STATE_TYPE = FSSReporterState
     core: CoreModule
     report_scheduled = False
@@ -37,7 +38,7 @@ class FSSReporter(Module):
         num_planets = str(len(self.core.state.current_system.bodies.get_bodies_by_attribute(BodyAttribute.planet)))
         first_discoveries = str(len(self.core.state.current_system.bodies.get_bodies_by_attribute(BodyAttribute.first_discovery_star, BodyAttribute.first_discovery_planet)))
         self.print( "╔═══════════════════════════════════════════════════════════════════════════════════</module_color>", prefix="\n<module_color>  ")
-        self.print(f"║\t{"Full" if self.report_scheduled else "Partial"} system scan of {self.core.state.current_system.name} {"complete!" if self.report_scheduled else ""}</module_color>", prefix="<module_color>  ")
+        self.print(f"║\t</module_color>{"<green_bold>Full</green_bold>" if self.report_scheduled else "<yellow_bold>Partial</yellow_bold>"} <module_bold>system scan of {self.core.state.current_system.name} {"complete!" if self.report_scheduled else ""}</module_bold>", prefix="<module_color>  ")
         self.print( "╠═══════════════════════════════════════════════════════════════════════════════════</module_color>", prefix="<module_color>  ")
         self.print(f"║  Stars: {num_stars:5}Planets: {num_planets:5}First discoveries: {first_discoveries}</module_color>", prefix="<module_color>  ")
         bodies = self.core.state.current_system.bodies

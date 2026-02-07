@@ -27,6 +27,8 @@ class EDSM(module.Module):
 
     def __init__(self):
         super().__init__(self.EXTRA_ALIASES)
+        if not self.state.enabled:
+            self.enable()
     
     async def get_system(self, system_name: str) -> Any | None:
         if not self.state.enabled:

@@ -22,7 +22,7 @@ class BoxelSurvey(module.Module):
 
     MODULE_NAME = "BoxelSurvey"
     MODULE_VERSION: str = "0.1.2"
-    EXTRA_ALIASES: set[str] = set(["boxelsurvey", "boxel", "boxels"])
+    EXTRA_ALIASES: set[str] = set(["boxel", "boxels"])
     STATE_TYPE = BoxelSurveyState
     boxel_log_file_path: Path
     core: core.CoreModule
@@ -86,7 +86,7 @@ class BoxelSurvey(module.Module):
                     self.print("Expression must have the following form:")
                     self.print("survey <red>[num_to_scan]</red> of <green>[num_of_stars]</green> in <bright_blue>[boxel_name]</bright_blue>")
                     return
-                if arguments[2] in ("all", "a", "full", "complete"):
+                if arguments[2] in ("all", "a"):
                     try:
                         self.state.systems_to_survey = int(arguments[4])
                     except ValueError:
@@ -138,6 +138,7 @@ class BoxelSurvey(module.Module):
             case "clear" | "finish":
                 if self.state.survey_ongoing:
                     self.print("<red>Survey cleared!</red>")
+                    self.print("Be aware that the information about the total number of systems in the boxel will be lost if not manually recorded!")
                     self.clear_survey()
                 else:
                     self.print("No survey ongoing!")
@@ -162,8 +163,8 @@ class BoxelSurvey(module.Module):
             self.clear_survey()
 
     def update_survey(self, star_system: str) -> None:
-        self.print(f"Updating survey with {star_system}, current system {self.state.next_system}")
         if self.state.next_system.lower() == star_system.lower().strip():
+            self.print(f"Updating survey with system <cyan>{star_system}</cyan>")
             open(self.boxel_log_file_path, "a").write(self.state.next_system + "\n")
             if len(self.state.system_list) > 0:
                 self.state.next_system = self.load_next_system()

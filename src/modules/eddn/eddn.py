@@ -43,10 +43,13 @@ class EDDN(module.Module):
 
     def __init__(self, coreModule: core.CoreModule) -> None:
         super().__init__(self.EXTRA_ALIASES)
+        if not self.state.enabled:
+            self.enable()
         self.error_dump_path = Path(self.module_dir / "errordump.json")
         self.core = coreModule
         if self.state.hardlock:
             self.print("<error>EDDN module has been locked due to previously encountering a serious problem!</error>")
+            self.print("If you think this has been done in error, then navigate to 'modules_data/eddn/eddn_state' and manually change 'hardlock' variable to 'false'")
             self.disable()
 
     async def process_event(self, event: Any, tg: asyncio.TaskGroup) -> None:   # Events are either new journal file lines or events produced by EDSST

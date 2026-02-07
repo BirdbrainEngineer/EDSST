@@ -24,7 +24,7 @@ class DW3DensityColumnSurvey(Module):
 
     MODULE_NAME = "DW3DensityColumnSurvey"
     MODULE_VERSION: str = "0.0.4"
-    EXTRA_ALIASES: set[str] = set(["dcs", "dc", "dw3c", "column", "densitycolumn", "densitycolumnsurvey", "dw3densitycolumnsurvey"])
+    EXTRA_ALIASES: set[str] = set(["dcs", "dc", "dw3c", "column", "densitycolumn", "densitycolumnsurvey"])
     MAX_HEIGHT_DEVIATION: float = 20
     survey_data_dir: Path = Path("")
     survey_file_path: Path = Path("")

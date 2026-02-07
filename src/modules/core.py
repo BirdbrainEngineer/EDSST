@@ -109,7 +109,7 @@ class CoreModule(Module):
 
     MODULE_NAME = "core"
     MODULE_VERSION: str = "0.3.0"
-    EXTRA_ALIASES: set[str] = set(["core", "main", "base", "edsst"])
+    EXTRA_ALIASES: set[str] = set(["main", "base", "edsst"])
     STATE_TYPE = CoreModuleState
     commander_greeted = False
     frontier_id: str = ""
