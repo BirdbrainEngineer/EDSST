@@ -25,6 +25,7 @@ class BodyAttribute(Enum):
     saa_scan = auto()
     saa_signal = auto()
     cluster = auto()
+    ring = auto()
     star = auto()
     planet = auto()
     icy_body = auto()
@@ -185,6 +186,7 @@ class CoreModule(Module):
             case "Scan":
                 is_star = True if "StarType" in event else False
                 is_cluster = True if "Cluster" in str(event["BodyName"]) else False
+                is_ring = True if "Ring" in event["BodyName"] else False
                 self.state.current_system.bodies.add_body_signal(event)
                 if event["WasDiscovered"] == False:
                     self.state.current_system.bodies.record_attribute(BodyAttribute.first_discovery, bodyID)
@@ -203,10 +205,12 @@ class CoreModule(Module):
                     self.state.current_system.bodies.record_attribute(BodyAttribute.first_possible_footfall, bodyID)
                     if not is_cluster and not is_star:
                         self.state.current_system.bodies.record_attribute(BodyAttribute.first_possible_footfall_planet, bodyID)
-                if is_cluster:                              
+                if is_ring:
+                    self.state.current_system.bodies.record_attribute(BodyAttribute.ring, bodyID)
+                elif is_cluster:                              
                     self.state.current_system.bodies.record_attribute(BodyAttribute.cluster, bodyID)
                 else:
-                    if "Rings" in event or "Ring" in event:                    
+                    if "Rings" in event:                    
                         self.state.current_system.bodies.record_attribute(BodyAttribute.ringed, bodyID)
                     if is_star:                             
                         self.state.current_system.bodies.record_attribute(BodyAttribute.star, bodyID)
