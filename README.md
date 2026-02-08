@@ -80,7 +80,7 @@ The FSS Reporter module is able to report the scan results of the current system
 - Number of planets in the system
 - Number of first discoveries (you still need to hand in the data at a station for it to actually count, though!)
 - Valuable planets to surface scan in the system, if any. It reports their name as well as the type and whether they are terraformable or not.
-- Planets with biological signatures, if any. It reports their name, number of signatures, minimum value, maximum value and average value of the signatures if scanned, type of the planet, mean surface temperature as well as the atmosphere type. In addition, if the module is in "verbose" mode, then it will report the possible species that can be found on the planet with their "3+3 Species codes" as well as their worth.
+- Planets with biological signatures, if any. It reports their name, number of signatures, possible minimum value, possible maximum value and average value of the signatures if scanned, type of the planet, mean surface temperature as well as the atmosphere type. In addition, if the module is in "verbose" mode, then it will report the possible species that can be found on the planet with their "3+3 Species codes" as well as their worth.
 - Planets with geological signatures, if any. It reports their name, number of signatures and type of volcanism of the planet.
 
 **Commands:**

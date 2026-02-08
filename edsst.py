@@ -94,7 +94,11 @@ async def listen_for_events():
                     file = open(latest_journal_file_path)
 
 async def event_loop(modules: list[Module], tg: asyncio.TaskGroup):
+    event_count: int = 0
     async for event in listen_for_events():
+        if TESTING_MODE == TestingMode.Testing:
+            print_formatted_text(HTML(f"<edsst_color>EDSST</edsst_color>: Journal line: <edsst_color>{event_count}</edsst_color>"))
+        event_count = event_count + 1
         for module in modules:
             if module.state.enabled or not module.caught_up:
                 try:

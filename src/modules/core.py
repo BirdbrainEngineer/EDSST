@@ -110,7 +110,7 @@ class CoreModule(Module):
     })
 
     MODULE_NAME = "core"
-    MODULE_VERSION: str = "0.3.0"
+    MODULE_VERSION: str = "0.3.1"
     EXTRA_ALIASES: set[str] = set(["main", "base", "edsst"])
     STATE_TYPE = CoreModuleState
     commander_greeted = False
@@ -206,7 +206,7 @@ class CoreModule(Module):
                 if is_cluster:                              
                     self.state.current_system.bodies.record_attribute(BodyAttribute.cluster, bodyID)
                 else:
-                    if "Rings" in event:                    
+                    if "Rings" in event or "Ring" in event:                    
                         self.state.current_system.bodies.record_attribute(BodyAttribute.ringed, bodyID)
                     if is_star:                             
                         self.state.current_system.bodies.record_attribute(BodyAttribute.star, bodyID)
