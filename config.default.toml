@@ -5,3 +5,6 @@ elite_dangerous_journal_path = ""
 # if on Linux, "Pyperclip" library may cause "focus stealing" (especially on Wayland) for now. To remedy this, EDSST can use a different clipboard utility
 # In that case I recommend to use: https://github.com/YaLTeR/wl-clipboard-rs
 wl_copy_bin_path = ""
+
+# set this to 'true' if you wish to enter "testing" mode
+testing_mode = false
