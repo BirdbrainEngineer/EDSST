@@ -111,6 +111,7 @@ class DensityNavRouteSurvey(module.Module):
     ship_unladen_mass = 0
     cargo_onboard: int = 0
     max_fuel: float = 0
+    ABSOLUTE_MAX_POSSIBLE_JUMP_DISTANCE: float = 100
     
 
     def __init__(self) -> None:
@@ -150,7 +151,7 @@ class DensityNavRouteSurvey(module.Module):
                         system_a_coords = system_b_coords
                         system_b_coords = (float(leg["StarPos"][0]), float(leg["StarPos"][1]), float(leg["StarPos"][2]))
                         distance = get_distance(system_a_coords, system_b_coords)
-                        if distance > self.jump_range:
+                        if distance > self.ABSOLUTE_MAX_POSSIBLE_JUMP_DISTANCE:
                             self.print("Detected a boosted jump, rejecting route! Please disable jet cone boosts!")
                             return
                         if distance > max_distance: max_distance = distance # The max distance needs to be taken this way because sometimes the route planner makes you jump a larger distance than your ship can jump fully fuelled

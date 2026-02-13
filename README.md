@@ -51,7 +51,7 @@ Consequently, because `FssReporterModule` has a few aliases among which is `fss`
 
 All included modules have `enable` and `disable` commands. When a module is enabled, it will receive new events from the journal file, and as such, it will process the information... when the module is disabled, it naturally won't be processing any of the incoming information.
 
-### Core (v.0.3.0)
+### Core (v.0.3.1)
 *Name and aliases* - `core`, `main`, `base`, `edsst`
 
 The core module stores information about the current (and previous) star system. As a user of EDSST you should never have to interact with this module.

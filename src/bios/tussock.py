@@ -61,7 +61,7 @@ class Catena(Species):
     name: str = "Catena"
     code: str = "TUSCAT"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.NH3]
-    planet_types: list[PlanetType] = [PlanetType.R]
+    planet_types: list[PlanetType] = [PlanetType.R, PlanetType.HMC]
 
 class Cultro(Species):
     value: int = 1766600
@@ -107,7 +107,7 @@ class Propagito(Species):
     code: str = "TUSPRO"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R]
     min_max_temperature: tuple[int, int] = (-195, -195)
-    planet_types: list[PlanetType] = [PlanetType.R]
+    planet_types: list[PlanetType] = [PlanetType.R, PlanetType.HMC]
 
 class Serrati(Species):
     value: int = 4447100
@@ -115,7 +115,7 @@ class Serrati(Species):
     code: str = "TUSSER"
     atmosphere_types: list[AtmosphereType] = [AtmosphereType.CO2, AtmosphereType.CO2_R]
     min_max_temperature: tuple[int, int] = (170, 175)
-    planet_types: list[PlanetType] = [PlanetType.R]
+    planet_types: list[PlanetType] = [PlanetType.R, PlanetType.HMC]
 
 class Stigmasis(Species):
     value: int = 19010800

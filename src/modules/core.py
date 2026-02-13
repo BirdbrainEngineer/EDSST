@@ -111,7 +111,7 @@ class CoreModule(Module):
     })
 
     MODULE_NAME = "core"
-    MODULE_VERSION: str = "0.3.1"
+    MODULE_VERSION: str = "0.3.2"
     EXTRA_ALIASES: set[str] = set(["main", "base", "edsst"])
     STATE_TYPE = CoreModuleState
     commander_greeted = False
@@ -215,12 +215,15 @@ class CoreModule(Module):
                     if is_star:                             
                         self.state.current_system.bodies.record_attribute(BodyAttribute.star, bodyID)
                     else:
-                        if event["TerraformState"]:         
-                            self.state.current_system.bodies.record_attribute(BodyAttribute.terraformable, bodyID)
-                        if event["Volcanism"]:              
-                            self.state.current_system.bodies.record_attribute(BodyAttribute.volcanic, bodyID)
-                        if event["Landable"]:               
-                            self.state.current_system.bodies.record_attribute(BodyAttribute.landable, bodyID)
+                        if "TerraformState" in event:
+                            if event["TerraformState"]:       
+                                self.state.current_system.bodies.record_attribute(BodyAttribute.terraformable, bodyID)
+                        if "Volcanism" in event:
+                            if event["Volcanism"]:              
+                                self.state.current_system.bodies.record_attribute(BodyAttribute.volcanic, bodyID)
+                        if "Landable" in event:
+                            if event["Landable"]:               
+                                self.state.current_system.bodies.record_attribute(BodyAttribute.landable, bodyID)
                         if "AtmosphereType" in event:
                             if event["AtmosphereType"] != "None":
                                 self.state.current_system.bodies.record_attribute(BodyAttribute.atmospheric, bodyID)
