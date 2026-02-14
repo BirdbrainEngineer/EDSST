@@ -8,3 +8,9 @@ wl_copy_bin_path = ""
 
 # set this to 'true' if you wish to enter "testing" mode
 testing_mode = false
+
+# set this to your EDSM commander name if you wish to send data directly to EDSM
+edsm_commander_name = ""
+
+# set this to your EDSM API key if you wish to send data directly to EDSM
+edsm_api_key = ""

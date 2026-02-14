@@ -182,8 +182,10 @@ For example: `dcs 49 11.2` or `dw3c 13 18.7` or `column 0 0`
 Density NavRoute Survey is a module to store the "NavRoute"-s for an experimental way to figure out the stellar density of the in-game galaxy. This second way to gauge stellar density could supplement the ongoing column surveys, especially if the column survey results are used to calibrate this method of gauging the stellar density. This module can safely be left disabled. If you wish to know more and/or help with the endeavor then contact me directly. 
 
 
-### EDSM (v.0.1.2)
-The EDSM module is currently only useful for developers to query data about star systems from [EDSM (Elite Dangerous Star Map)](https://www.edsm.net/). 
+### EDSM (v.0.2.0)
+The EDSM module is useful for developers to query data about star systems from [EDSM (Elite Dangerous Star Map)](https://www.edsm.net/). The module will work to query from EDSM even when it is disabled.
+
+In addition, the EDSM module will try to send any journal events to EDSM directly, as long as the `edsm_api_key` and `edsm_commander_name` fields are set and valid in the `config.toml` file. 
 
 
 ### ExampleModule

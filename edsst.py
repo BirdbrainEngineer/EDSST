@@ -136,7 +136,7 @@ async def main():
 
     modules: list[Module] = []
     core_module = CoreModule()
-    edsm_module = EDSM()
+    edsm_module = EDSM(core_module)
     modules.append(core_module)
     modules.append(EDDN(core_module))
     modules.append(edsm_module)

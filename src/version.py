@@ -2,7 +2,7 @@ from pathlib import Path
 from enum import Enum, auto
 import toml
 
-EDSST_VERSION = "v0.1.3"
+EDSST_VERSION = "v0.1.4"
 
 MODULE_VERSIONS_PATH = Path("module_versions.json")
 
